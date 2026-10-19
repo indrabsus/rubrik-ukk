@@ -1,0 +1,65 @@
+[
+  {
+    "no": 1,
+    "komponen": "Fitur Utama & CRUD",
+    "indikator": "• Fitur utama aplikasi berjalan sesuai spesifikasi soal (Create, Read, Update, Delete berjalan mulus tanpa error fatal).\n• Validasi data input (misal: form kosong atau duplikat data tertangani dengan baik).",
+    "maksScore": 15,
+    "bobot": "15%"
+  },
+  {
+    "no": 2,
+    "komponen": "Alur Bisnis (Business Logic)",
+    "indikator": "• Alur sistem logis sesuai studi kasus (Contoh: Status barang/kendaraan berubah, perhitungan denda/durasi akurat).",
+    "maksScore": 15,
+    "bobot": "15%"
+  },
+  {
+    "no": 3,
+    "komponen": "Tampilan & UI/UX",
+    "indikator": "• Antarmuka intuitif, responsif, mudah digunakan, dan navigasi jelas (menggunakan Bootstrap/Tailwind/Framework CSS yang rapi).",
+    "maksScore": 10,
+    "bobot": "10%"
+  },
+  {
+    "no": 4,
+    "komponen": "Struktur Database & Query",
+    "indikator": "• Desain tabel relasional bersih, penamaan kolom konsisten, relasi Foreign Key tepat, dan query database efisien.",
+    "maksScore": 10,
+    "bobot": "10%"
+  },
+  {
+    "no": 5,
+    "komponen": "Kebersihan & Kerapian Kode",
+    "indikator": "• Penamaan variabel/fungsi deskriptif, struktur folder rapi (mengikuti pola MVC/framework), minim kode berlebih (clean code).",
+    "maksScore": 10,
+    "bobot": "10%"
+  },
+  {
+    "no": 6,
+    "komponen": "Kelengkapan Laporan",
+    "indikator": "• Laporan mencakup: Pendahuluan/Latar Belakang, Analisis Kebutuhan, Perancangan (ERD, Flowchart/UML), Screenshot Tampilan, dan Pengujian.",
+    "maksScore": 10,
+    "bobot": "10%"
+  },
+  {
+    "no": 7,
+    "komponen": "Format & Penulisan",
+    "indikator": "• Penulisan sesuai standar karya ilmiah/laporan praktik, rapi, tata bahasa baik, dan lampiran kode/listing program jelas.",
+    "maksScore": 5,
+    "bobot": "5%"
+  },
+  {
+    "no": 8,
+    "komponen": "Penjelasan Teknis & Demo",
+    "indikator": "• Siswa dapat mendemonstrasikan aplikasi dengan lancar dan menjelaskan bagian kode buatan sendiri saat diminta penguji secara spontan.",
+    "maksScore": 10,
+    "bobot": "10%"
+  },
+  {
+    "no": 9,
+    "komponen": "Kemampuan Analisis & Troubleshooting",
+    "indikator": "• Siswa mampu menjawab pertanyaan logika, menjelaskan cara kerja fungsi tertentu, dan memberikan solusi jika ditanya skenario error.",
+    "maksScore": 15,
+    "bobot": "15%"
+  }
+]
