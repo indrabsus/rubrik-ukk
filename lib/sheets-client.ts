@@ -19,7 +19,7 @@ export async function getRubrikData(): Promise<KomponenRubrik[]> {
     const res = await fetch(url, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -53,13 +53,36 @@ export async function getSiswaData(): Promise<Siswa[]> {
     const res = await fetch(url, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
-      next: { revalidate: 30 }
+      cache: 'no-store'
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (json && Array.isArray(json.siswa) && json.siswa.length > 0) {
-      return json.siswa;
+      return json.siswa.map((item: any) => {
+        const scores: Record<number, number> = {};
+        for (let k = 1; k <= 9; k++) {
+          if (item.scores && item.scores[k] !== undefined) {
+            scores[k] = Number(item.scores[k]) || 0;
+          } else if (item['skor' + k] !== undefined && item['skor' + k] !== '') {
+            scores[k] = Number(item['skor' + k]) || 0;
+          } else {
+            scores[k] = 0;
+          }
+        }
+        return {
+          no: Number(item.no || item.rowIdx || 0),
+          kelas: String(item.kelas || 'XII RPL').trim(),
+          nama: String(item.nama || '').trim(),
+          nis: String(item.nis || '').trim(),
+          project: String(item.project || '').trim(),
+          scores: scores,
+          total: (item.total !== '' && item.total !== null && item.total !== undefined) ? Number(item.total) : 0,
+          catatan: String(item.catatan || '-').trim(),
+          penguji: String(item.penguji || '-').trim(),
+          docUrl: String(item.docUrl || '').trim()
+        };
+      });
     }
   } catch (err) {
     console.warn('[SheetsClient] Gagal fetch siswa dari GAS, menggunakan fallback:', err);

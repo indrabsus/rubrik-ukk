@@ -75,8 +75,8 @@ export default function DashboardPage() {
     setLoadingData(true);
     try {
       const [resRubrik, resSiswa] = await Promise.all([
-        fetch('/api/rubrik'),
-        fetch('/api/siswa')
+        fetch('/api/rubrik?t=' + Date.now(), { cache: 'no-store' }),
+        fetch('/api/siswa?t=' + Date.now(), { cache: 'no-store' })
       ]);
 
       const dataRubrik = await resRubrik.json();
@@ -132,16 +132,41 @@ export default function DashboardPage() {
       setCatatan(activeStudent.catatan || '-');
       setPengujiName(currentUser?.nama || activeStudent.penguji || '-');
 
-      // Inisialisasi skor
-      if (activeStudent.scores) {
-        setScores(activeStudent.scores);
-      } else {
-        const initScores: Record<number, number> = {};
-        rubrik.forEach((r) => {
-          initScores[r.no] = 0;
-        });
-        setScores(initScores);
+      // Inisialisasi skor dari data siswa atau backup lokal
+      const loadedScores: Record<number, number> = {};
+      let hasServerScore = false;
+
+      rubrik.forEach((r) => {
+        let val = 0;
+        if (activeStudent.scores && activeStudent.scores[r.no] !== undefined) {
+          val = Number(activeStudent.scores[r.no]) || 0;
+        } else if ((activeStudent as any)['skor' + r.no] !== undefined && (activeStudent as any)['skor' + r.no] !== '') {
+          val = Number((activeStudent as any)['skor' + r.no]) || 0;
+        }
+        if (val > 0) hasServerScore = true;
+        loadedScores[r.no] = val;
+      });
+
+      // Jika di data server belum terisi atau baru disimpan, pulihkan dari localStorage
+      if (!hasServerScore && typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('ukk_scores_' + activeStudent.nis);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.scores) {
+              rubrik.forEach((r) => {
+                if (parsed.scores[r.no] !== undefined) {
+                  loadedScores[r.no] = Number(parsed.scores[r.no]) || 0;
+                }
+              });
+              if (parsed.project) setProjectTitle(parsed.project);
+              if (parsed.catatan) setCatatan(parsed.catatan);
+            }
+          }
+        } catch (e) {}
       }
+
+      setScores(loadedScores);
     }
   }, [activeStudent, currentUser, rubrik]);
 
@@ -201,6 +226,13 @@ export default function DashboardPage() {
 
       if (data.success) {
         setStatusMsg({ type: 'ok', text: data.message || 'Nilai berhasil disimpan ke Spreadsheet!' });
+        // Backup ke localStorage agar nilai tidak hilang saat refresh browser
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('ukk_scores_' + activeStudent.nis, JSON.stringify(payload));
+          } catch (e) {}
+        }
+
         // Update local siswa list
         setSiswaList((prev) =>
           prev.map((s) =>
