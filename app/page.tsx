@@ -286,7 +286,7 @@ export default function DashboardPage() {
       if (data.success && data.docUrl) {
         setStatusMsg({
           type: 'ok',
-          text: 'Dokumen Google Docs berhasil digenerate!',
+          text: 'Dokumen PDF resmi berhasil digenerate!',
           docUrl: data.docUrl
         });
         // Update local student docUrl
@@ -415,7 +415,7 @@ export default function DashboardPage() {
                 rel="noreferrer"
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg transition"
               >
-                <span>Buka Google Docs</span>
+                <span>Buka File PDF</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
@@ -781,7 +781,7 @@ export default function DashboardPage() {
                   ) : (
                     <>
                       <FileText className="w-4 h-4" />
-                      <span>Generate Google Docs (Mail Merge)</span>
+                      <span>Generate Dokumen (Mail Merge PDF)</span>
                     </>
                   )}
                 </button>
