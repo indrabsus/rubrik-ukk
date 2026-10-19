@@ -82,18 +82,12 @@ export default function LoginPage() {
                 >
                   {DAFTAR_GURU_RPL.map((guru) => (
                     <option key={guru.id} value={guru.username} className="bg-slate-900 text-white">
-                      {guru.nama} ({guru.jabatan})
+                      {guru.nama}
                     </option>
                   ))}
                 </select>
                 <UserCheck className="w-5 h-5 text-indigo-400 absolute right-3 top-3.5 pointer-events-none" />
               </div>
-              {selectedGuru && (
-                <p className="text-xs text-indigo-300/80 mt-1.5 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Username: <code className="bg-slate-800 px-1.5 py-0.5 rounded text-white">{selectedGuru.username}</code>
-                </p>
-              )}
             </div>
 
             {/* Input Password */}
@@ -112,9 +106,6 @@ export default function LoginPage() {
                 />
                 <Lock className="w-5 h-5 text-indigo-400 absolute right-3 top-3.5 pointer-events-none" />
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Default password: <span className="text-indigo-300 font-mono">rpl2026</span>
-              </p>
             </div>
 
             {/* Submit Button */}

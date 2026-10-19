@@ -72,30 +72,6 @@ export const DAFTAR_GURU_RPL: Guru[] = [
     nip: 'NIP. -',
     jabatan: 'Guru Produktif PPLG',
     role: 'guru'
-  },
-  {
-    id: '10',
-    username: 'mutiarazahra',
-    nama: 'Mutiara Zahra, S.Pd.',
-    nip: 'NIP. -',
-    jabatan: 'Guru Produktif PPLG',
-    role: 'guru'
-  },
-  {
-    id: '11',
-    username: 'darwan',
-    nama: 'Darwan, S.Si',
-    nip: 'CV Awana Academy',
-    jabatan: 'Direktur CV Awana Academy / Penguji Industri',
-    role: 'eksternal'
-  },
-  {
-    id: '12',
-    username: 'penguji',
-    nama: 'Penguji UKK Mandiri',
-    nip: 'DUDI / Praktisi',
-    jabatan: 'Penguji Eksternal UKK',
-    role: 'eksternal'
   }
 ];
 

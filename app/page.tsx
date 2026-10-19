@@ -130,7 +130,7 @@ export default function DashboardPage() {
     if (activeStudent) {
       setProjectTitle(activeStudent.project || 'Peminjaman Alat');
       setCatatan(activeStudent.catatan || '-');
-      setPengujiName(activeStudent.penguji || currentUser?.nama || '-');
+      setPengujiName(currentUser?.nama || activeStudent.penguji || '-');
 
       // Inisialisasi skor
       if (activeStudent.scores) {
@@ -160,10 +160,9 @@ export default function DashboardPage() {
   }, [totalScore, maxPossibleScore]);
 
   const predikat = useMemo(() => {
-    if (nilaiAkhir >= 86) return { label: 'Sangat Baik (A)', color: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30' };
-    if (nilaiAkhir >= 76) return { label: 'Baik (B)', color: 'text-blue-400 bg-blue-500/20 border-blue-500/30' };
-    if (nilaiAkhir >= 66) return { label: 'Cukup (C)', color: 'text-amber-400 bg-amber-500/20 border-amber-500/30' };
-    return { label: 'Kurang (D)', color: 'text-rose-400 bg-rose-500/20 border-rose-500/30' };
+    if (nilaiAkhir > 90) return { label: 'Sangat Kompeten', color: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30' };
+    if (nilaiAkhir >= 80) return { label: 'Kompeten', color: 'text-blue-400 bg-blue-500/20 border-blue-500/30' };
+    return { label: 'Belum Kompeten', color: 'text-rose-400 bg-rose-500/20 border-rose-500/30' };
   }, [nilaiAkhir]);
 
   // Handle Score Change
@@ -707,17 +706,16 @@ export default function DashboardPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Nama Guru Penguji UKK (Default: -)
+                    Guru Penguji UKK (Otomatis dari Akun Login)
                   </label>
-                  <input
-                    type="text"
-                    value={pengujiName}
-                    onChange={(e) => setPengujiName(e.target.value)}
-                    placeholder="Nama penguji..."
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <div className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-indigo-300 font-semibold flex items-center justify-between shadow-inner">
+                    <span>{currentUser?.nama || '-'}</span>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      Otomatis
+                    </span>
+                  </div>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Format nama akan dicetak <strong>BOLD & CENTER</strong> pada dokumen Docs.
+                    Nama penguji otomatis diambil dari akun Anda dan dicetak <strong>BOLD & CENTER</strong> pada dokumen Docs.
                   </p>
                 </div>
               </div>
@@ -778,9 +776,9 @@ export default function DashboardPage() {
                 <tr>
                   <th className="py-3 px-4">No</th>
                   <th className="py-3 px-4">Nama Siswa</th>
-                  <th className="py-3 px-4">NIS</th>
-                  <th className="py-3 px-4">Judul Project</th>
-                  <th className="py-3 px-4 text-center">Total Skor</th>
+                  <th className="py-3 px-4">Kelas</th>
+                  <th className="py-3 px-4 text-center">Nilai</th>
+                  <th className="py-3 px-4 text-center">Keterangan</th>
                   <th className="py-3 px-4">Penguji</th>
                   <th className="py-3 px-4 text-center">Aksi</th>
                 </tr>
@@ -789,6 +787,7 @@ export default function DashboardPage() {
                 {filteredSiswa.map((siswa, idx) => {
                   const isCurrent = siswa.nis === selectedNis;
                   const hasScore = (siswa.total || 0) > 0;
+                  const scoreVal = siswa.total || 0;
 
                   return (
                     <tr
@@ -802,17 +801,35 @@ export default function DashboardPage() {
                       <td className="py-3 px-4 font-semibold text-white capitalize">
                         {siswa.nama.toLowerCase()}
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-400">{siswa.nis}</td>
-                      <td className="py-3 px-4 text-slate-300">{siswa.project || '-'}</td>
+                      <td className="py-3 px-4 text-slate-300">{siswa.kelas}</td>
                       <td className="py-3 px-4 text-center">
                         {hasScore ? (
-                          <span className="inline-block px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            {siswa.total}
+                          <span className="inline-block px-2.5 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            {scoreVal}
                           </span>
                         ) : (
                           <span className="inline-block px-2.5 py-0.5 rounded-full text-slate-500 bg-slate-800/80">
                             -
                           </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {hasScore ? (
+                          scoreVal > 90 ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              Sangat Kompeten
+                            </span>
+                          ) : scoreVal >= 80 ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                              Kompeten
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              Belum Kompeten
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-slate-500">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-slate-300 truncate max-w-[140px]">
