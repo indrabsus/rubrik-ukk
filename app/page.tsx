@@ -635,17 +635,18 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-sm font-bold text-white capitalize">{activeStudent.nama.toLowerCase()}</div>
                   <div className="text-xs text-slate-300 flex items-center justify-between">
-                    <span className="text-indigo-300 font-medium truncate">{projectTitle}</span>
+                    <span className="text-indigo-300 font-medium truncate">Soal: {projectTitle}</span>
                     <span className="text-slate-400 text-[11px]">Penguji: <strong className="text-indigo-200">{activeStudent.penguji && activeStudent.penguji !== '-' ? activeStudent.penguji : currentUser?.nama || '-'}</strong></span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Judul Project Topik */}
+            {/* Pilihan Soal UKK (Cell R) */}
             <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                Judul Project / Aplikasi UKK
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between">
+                <span>Soal UKK (Cell R)</span>
+                <span className="text-[10px] text-blue-400 font-medium normal-case">Kolom R Sheet</span>
               </label>
               <div className="space-y-1.5">
                 {topikOptions.map((topik) => (
