@@ -102,6 +102,19 @@ export default function DashboardPage() {
     checkAuth();
   }, [router]);
 
+  // 1b. Bersihkan cache lama di localStorage agar Google Sheet selalu menjadi satu-satunya sumber data
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('ukk_scores_')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {}
+    }
+  }, []);
+
   // 2. Fetch Data Rubrik & Siswa
   const fetchData = async () => {
     setLoadingData(true);
@@ -181,9 +194,8 @@ export default function DashboardPage() {
       setCatatan(activeStudent.catatan || '-');
       setPengujiName(currentUser?.nama || activeStudent.penguji || '-');
 
-      // Inisialisasi skor dari data siswa atau backup lokal
+      // Inisialisasi skor murni dari Google Spreadsheet (jika di sheet dihapus, maka disini juga kosong 0)
       const loadedScores: Record<number, number> = {};
-      let hasServerScore = false;
 
       rubrik.forEach((r) => {
         let val = 0;
@@ -192,28 +204,8 @@ export default function DashboardPage() {
         } else if ((activeStudent as any)['skor' + r.no] !== undefined && (activeStudent as any)['skor' + r.no] !== '') {
           val = Number((activeStudent as any)['skor' + r.no]) || 0;
         }
-        if (val > 0) hasServerScore = true;
         loadedScores[r.no] = val;
       });
-
-      // Jika di data server belum terisi atau baru disimpan, pulihkan dari localStorage
-      if (!hasServerScore && typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('ukk_scores_' + activeStudent.nis);
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (parsed && parsed.scores) {
-              rubrik.forEach((r) => {
-                if (parsed.scores[r.no] !== undefined) {
-                  loadedScores[r.no] = Number(parsed.scores[r.no]) || 0;
-                }
-              });
-              if (parsed.project) setProjectTitle(parsed.project);
-              if (parsed.catatan) setCatatan(parsed.catatan);
-            }
-          }
-        } catch (e) {}
-      }
 
       setScores(loadedScores);
     }
@@ -275,12 +267,7 @@ export default function DashboardPage() {
 
       if (data.success) {
         setStatusMsg({ type: 'ok', text: data.message || 'Nilai berhasil disimpan ke Spreadsheet!' });
-        // Backup ke localStorage agar nilai tidak hilang saat refresh browser
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('ukk_scores_' + activeStudent.nis, JSON.stringify(payload));
-          } catch (e) {}
-        }
+// Nilai tersimpan langsung ke Google Spreadsheet
 
         // Update local siswa list
         setSiswaList((prev) =>
@@ -409,14 +396,24 @@ export default function DashboardPage() {
               <span>Sheet Penilaian</span>
             </button>
 
-            {/* Refresh Button */}
+            {/* Refresh Button dengan pembersihan cache */}
             <button
-              onClick={fetchData}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  try {
+                    Object.keys(localStorage).forEach((key) => {
+                      if (key.startsWith('ukk_scores_')) localStorage.removeItem(key);
+                    });
+                  } catch (e) {}
+                }
+                fetchData();
+              }}
               disabled={loadingData}
-              title="Sinkronkan ulang dari Spreadsheet"
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition disabled:opacity-50"
+              title="Sinkronkan ulang data langsung dari Spreadsheet"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loadingData ? 'animate-spin text-indigo-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingData ? 'animate-spin text-indigo-400' : ''}`} />
+              <span className="hidden sm:inline">Sinkronkan Sheet</span>
             </button>
 
             {/* Penguji Badge */}
