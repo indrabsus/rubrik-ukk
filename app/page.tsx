@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Guru, Siswa, KomponenRubrik } from '@/types';
 import {
@@ -80,6 +80,38 @@ export default function DashboardPage() {
   const [merging, setMerging] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'ok' | 'err'; text: string; docUrl?: string } | null>(null);
   const [showRubrikModal, setShowRubrikModal] = useState(false);
+
+  // Modal Data Tersimpan State
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savedDataInfo, setSavedDataInfo] = useState<{
+    nama: string;
+    kelas: string;
+    project: string;
+    total: number;
+    nilaiAkhir: number;
+    predikat: string;
+    penguji: string;
+  } | null>(null);
+
+  // Kajur Bulk PDF States
+  const [showBulkPdfModal, setShowBulkPdfModal] = useState(false);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkScope, setBulkScope] = useState<'scored' | 'all'>('scored');
+  const [bulkProgress, setBulkProgress] = useState<{
+    current: number;
+    total: number;
+    activeName: string;
+    completed: boolean;
+    successCount: number;
+    failCount: number;
+  }>({ current: 0, total: 0, activeName: '', completed: false, successCount: 0, failCount: 0 });
+  const [singleGeneratingNis, setSingleGeneratingNis] = useState<string | null>(null);
+  const abortBulkRef = useRef(false);
+
+  // Cek apakah akun aktif adalah Kajur (Indra Batara)
+  const isKajur = useMemo(() => {
+    return currentUser?.role === 'kajur' || currentUser?.username?.toLowerCase() === 'indrabatara';
+  }, [currentUser]);
 
   // 1. Cek Autentikasi Penguji
   useEffect(() => {
@@ -266,8 +298,17 @@ export default function DashboardPage() {
       const data = await res.json();
 
       if (data.success) {
-        setStatusMsg({ type: 'ok', text: data.message || 'Nilai berhasil disimpan ke Spreadsheet!' });
-// Nilai tersimpan langsung ke Google Spreadsheet
+        // Tampilkan Modal Data Tersimpan
+        setSavedDataInfo({
+          nama: activeStudent.nama,
+          kelas: activeStudent.kelas,
+          project: projectTitle,
+          total: totalScore,
+          nilaiAkhir: Number(nilaiAkhir) || 0,
+          predikat: predikat.label,
+          penguji: pengujiName || currentUser?.nama || '-'
+        });
+        setShowSaveModal(true);
 
         // Update local siswa list
         setSiswaList((prev) =>
@@ -292,6 +333,131 @@ export default function DashboardPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // 6b. Action: Generate Single PDF untuk Siswa (Kajur Akses)
+  const handleGenerateSinglePdf = async (siswa: Siswa) => {
+    setSingleGeneratingNis(siswa.nis);
+    setStatusMsg(null);
+
+    const payload = {
+      nis: siswa.nis,
+      nama: siswa.nama,
+      kelas: siswa.kelas,
+      project: siswa.project || 'Peminjaman Alat',
+      scores: siswa.scores || {},
+      total: siswa.total || 0,
+      catatan: siswa.catatan || '-',
+      penguji: siswa.penguji || currentUser?.nama || '-'
+    };
+
+    try {
+      const res = await fetch('/api/mail-merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.success && data.docUrl) {
+        setStatusMsg({
+          type: 'ok',
+          text: `PDF untuk ${siswa.nama} berhasil digenerate!`,
+          docUrl: data.docUrl
+        });
+        setSiswaList((prev) =>
+          prev.map((s) =>
+            s.nis === siswa.nis
+              ? { ...s, docUrl: data.docUrl }
+              : s
+          )
+        );
+      } else {
+        setStatusMsg({ type: 'err', text: data.message || `Gagal generate PDF untuk ${siswa.nama}` });
+      }
+    } catch (err: any) {
+      setStatusMsg({ type: 'err', text: 'Error generate PDF: ' + err.message });
+    } finally {
+      setSingleGeneratingNis(null);
+    }
+  };
+
+  // 6c. Action: Bulk Generate PDF Semua Siswa (Kajur Akses)
+  const handleStartBulkPdf = async () => {
+    const targets = bulkScope === 'scored'
+      ? siswaList.filter(s => (s.total || 0) > 0)
+      : siswaList;
+
+    if (targets.length === 0) {
+      alert("Tidak ada siswa yang memenuhi kriteria untuk di-generate PDF.");
+      return;
+    }
+
+    setBulkGenerating(true);
+    abortBulkRef.current = false;
+    setBulkProgress({
+      current: 0,
+      total: targets.length,
+      activeName: targets[0].nama,
+      completed: false,
+      successCount: 0,
+      failCount: 0
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < targets.length; i++) {
+      if (abortBulkRef.current) break;
+
+      const s = targets[i];
+      setBulkProgress(prev => ({
+        ...prev,
+        current: i + 1,
+        activeName: s.nama
+      }));
+
+      try {
+        const payload = {
+          nis: s.nis,
+          nama: s.nama,
+          kelas: s.kelas,
+          project: s.project || 'Peminjaman Alat',
+          scores: s.scores || {},
+          total: s.total || 0,
+          catatan: s.catatan || '-',
+          penguji: s.penguji || '-'
+        };
+
+        const res = await fetch('/api/mail-merge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success && data.docUrl) {
+          successCount++;
+          setSiswaList(prev => prev.map(item => item.nis === s.nis ? { ...item, docUrl: data.docUrl } : item));
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+
+      setBulkProgress(prev => ({
+        ...prev,
+        successCount,
+        failCount
+      }));
+    }
+
+    setBulkGenerating(false);
+    setBulkProgress(prev => ({
+      ...prev,
+      completed: true
+    }));
   };
 
   // 7. Action: Mail Merge ke Google Docs
@@ -502,7 +668,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Grid: Left Selector & Right Rubric Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Kolom Kiri: Pemilihan Siswa (4 Cols) */}
           <div className="lg:col-span-4 space-y-4">
             <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
@@ -669,8 +835,8 @@ export default function DashboardPage() {
 
           {/* Kolom Kanan: Rubrik Penilaian Dinamis (8 Cols) */}
           <div className="lg:col-span-8 space-y-5">
-            {/* Header Score Overview Card */}
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-900/40 rounded-3xl p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Header Score Overview Card - STICKY TIDAK IKUT TERSCROLL */}
+            <div className="sticky top-[68px] z-20 bg-slate-900/95 backdrop-blur-md border border-indigo-900/60 rounded-3xl p-5 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-indigo-400" />
@@ -832,36 +998,20 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
+              {/* Action Button: Hanya Simpan ke Spreadsheet (Tombol Generate Dokumen Dihapus) */}
+              <div className="pt-4">
                 <button
                   type="button"
                   onClick={handleSaveToSheet}
                   disabled={saving || !activeStudent}
-                  className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 px-6 rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 disabled:opacity-50 cursor-pointer"
+                  className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-4 px-6 rounded-2xl transition flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-950/40 disabled:opacity-50 cursor-pointer text-sm"
                 >
                   {saving ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Save className="w-4 h-4" />
-                      <span>Simpan ke Spreadsheet</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleMailMerge}
-                  disabled={merging || !activeStudent}
-                  className="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-semibold py-3.5 px-6 rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 disabled:opacity-50 cursor-pointer"
-                >
-                  {merging ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <FileText className="w-4 h-4" />
-                      <span>Generate Dokumen (Mail Merge PDF)</span>
+                      <Save className="w-5 h-5" />
+                      <span>Simpan Nilai ke Spreadsheet</span>
                     </>
                   )}
                 </button>
@@ -874,12 +1024,36 @@ export default function DashboardPage() {
         <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-white">Rekapitulasi Nilai Siswa {selectedKelas !== "Semua" ? selectedKelas : (filterMode === "hanya_saya" ? "(Siswa Ujian Saya)" : "(Semua Kelas)")}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">
+                  Rekapitulasi Nilai Siswa {selectedKelas !== "Semua" ? selectedKelas : (filterMode === "hanya_saya" ? "(Siswa Ujian Saya)" : "(Semua Kelas)")}
+                </h3>
+                {isKajur && (
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase tracking-wider">
+                    Akses Kajur
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-400">Daftar siswa dan status penilaian aktif</p>
             </div>
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-indigo-300 border border-slate-700">
-              {filteredSiswa.length} Siswa Terdaftar
-            </span>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Tombol Khusus Kajur (Indra Batara): Generate PDF Semua Siswa */}
+              {isKajur && (
+                <button
+                  type="button"
+                  onClick={() => setShowBulkPdfModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Generate PDF Semua Siswa (Kajur)</span>
+                </button>
+              )}
+
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 text-indigo-300 border border-slate-700">
+                {filteredSiswa.length} Siswa Terdaftar
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-slate-800">
@@ -892,6 +1066,7 @@ export default function DashboardPage() {
                   <th className="py-3 px-4 text-center">Nilai</th>
                   <th className="py-3 px-4 text-center">Keterangan</th>
                   <th className="py-3 px-4">Penguji</th>
+                  <th className="py-3 px-4 text-center">Dokumen PDF</th>
                   <th className="py-3 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
@@ -947,6 +1122,40 @@ export default function DashboardPage() {
                       <td className="py-3 px-4 text-slate-300 truncate max-w-[140px]">
                         {siswa.penguji || '-'}
                       </td>
+                      {/* Dokumen PDF Link / Button */}
+                      <td className="py-3 px-4 text-center">
+                        {siswa.docUrl ? (
+                          <a
+                            href={siswa.docUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 text-[11px] font-semibold transition"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>PDF</span>
+                          </a>
+                        ) : isKajur ? (
+                          <button
+                            type="button"
+                            disabled={singleGeneratingNis === siswa.nis}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGenerateSinglePdf(siswa);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 border border-slate-700 hover:border-indigo-500/40 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50"
+                          >
+                            {singleGeneratingNis === siswa.nis ? (
+                              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <FileText className="w-3 h-3" />
+                            )}
+                            <span>Buat PDF</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 text-[11px]">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-center">
                         <button
                           type="button"
@@ -954,7 +1163,7 @@ export default function DashboardPage() {
                             e.stopPropagation();
                             setSelectedNis(siswa.nis);
                           }}
-                          className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[11px] transition shadow"
+                          className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[11px] transition shadow cursor-pointer"
                         >
                           Nilai
                         </button>
@@ -967,6 +1176,205 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal: Data Tersimpan ke Spreadsheet */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-white">Data Tersimpan!</h3>
+              <p className="text-xs text-slate-300">
+                Nilai dan Soal ujian siswa telah berhasil dicatat ke Google Spreadsheet.
+              </p>
+            </div>
+
+            {savedDataInfo && (
+              <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 text-left space-y-2 text-xs">
+                <div className="flex justify-between pb-1.5 border-b border-slate-700/60">
+                  <span className="text-slate-400">Nama Siswa:</span>
+                  <span className="font-bold text-white text-right capitalize">{savedDataInfo.nama.toLowerCase()}</span>
+                </div>
+                <div className="flex justify-between pb-1.5 border-b border-slate-700/60">
+                  <span className="text-slate-400">Kelas:</span>
+                  <span className="font-semibold text-slate-200">{savedDataInfo.kelas}</span>
+                </div>
+                <div className="flex justify-between pb-1.5 border-b border-slate-700/60">
+                  <span className="text-slate-400">Soal UKK (Cell R):</span>
+                  <span className="font-semibold text-indigo-300">{savedDataInfo.project}</span>
+                </div>
+                <div className="flex justify-between pb-1.5 border-b border-slate-700/60">
+                  <span className="text-slate-400">Total Skor / Skala 100:</span>
+                  <span className="font-bold text-emerald-400">{savedDataInfo.total} / {savedDataInfo.nilaiAkhir}</span>
+                </div>
+                <div className="flex justify-between pb-1.5 border-b border-slate-700/60">
+                  <span className="text-slate-400">Predikat:</span>
+                  <span className="font-bold text-white">{savedDataInfo.predikat}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Guru Penguji:</span>
+                  <span className="font-semibold text-slate-300 truncate max-w-[180px]">{savedDataInfo.penguji}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowSaveModal(false)}
+              className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow-lg shadow-emerald-600/30 cursor-pointer"
+            >
+              OK, Lanjutkan
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Kajur Generate PDF Semua Siswa */}
+      {showBulkPdfModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Generate Dokumen PDF (Kajur)</h3>
+                  <p className="text-xs text-slate-400">Otomatis buat file PDF resmi untuk siswa dari seluruh penguji</p>
+                </div>
+              </div>
+              {!bulkGenerating && (
+                <button
+                  type="button"
+                  onClick={() => setShowBulkPdfModal(false)}
+                  className="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {!bulkGenerating && !bulkProgress.completed && (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-2">Pilih Sasaran Siswa:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBulkScope('scored')}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition ${
+                        bulkScope === 'scored'
+                          ? 'bg-indigo-600/20 border-indigo-500 text-white font-semibold'
+                          : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="font-bold text-sm text-indigo-300">Siswa Bernilai</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {siswaList.filter(s => (s.total || 0) > 0).length} siswa sudah dinilai
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBulkScope('all')}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition ${
+                        bulkScope === 'all'
+                          ? 'bg-indigo-600/20 border-indigo-500 text-white font-semibold'
+                          : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="font-bold text-sm text-indigo-300">Semua Siswa</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {siswaList.length} siswa total
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-800 text-slate-400 space-y-1">
+                  <p className="font-medium text-slate-300">ℹ️ Informasi Generate:</p>
+                  <p>• PDF langsung tersimpan di Google Drive Kajur (Folder: <em>Arsip Nilai UKK RPL 2026-2027</em>).</p>
+                  <p>• Link PDF otomatis tercatat di Spreadsheet Kolom T (Link Dokumen).</p>
+                  <p>• Format layout 1 halaman penuh A4 resmi SMK Sangkuriang 1 Cimahi.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleStartBulkPdf}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Mulai Generate {bulkScope === 'scored' ? siswaList.filter(s => (s.total || 0) > 0).length : siswaList.length} File PDF</span>
+                </button>
+              </div>
+            )}
+
+            {bulkGenerating && (
+              <div className="space-y-4 py-3 text-center">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-semibold">
+                    <span>Memproses: {bulkProgress.activeName}</span>
+                    <span>{bulkProgress.current} / {bulkProgress.total}</span>
+                  </div>
+                  <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden border border-slate-700">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 to-blue-400 transition-all duration-300 rounded-full"
+                      style={{
+                        width: `${Math.round((bulkProgress.current / Math.max(bulkProgress.total, 1)) * 100)}%`
+                      }}
+                    />
+                  </div>
+                  <div className="text-right text-[11px] text-indigo-300 font-bold">
+                    {Math.round((bulkProgress.current / Math.max(bulkProgress.total, 1)) * 100)}% Selesai
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-4 text-xs">
+                  <span className="text-emerald-400 font-semibold">✓ Berhasil: {bulkProgress.successCount}</span>
+                  {bulkProgress.failCount > 0 && (
+                    <span className="text-rose-400 font-semibold">✗ Gagal: {bulkProgress.failCount}</span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => { abortBulkRef.current = true; }}
+                  className="py-2 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition cursor-pointer"
+                >
+                  Hentikan Proses
+                </button>
+              </div>
+            )}
+
+            {bulkProgress.completed && (
+              <div className="space-y-4 py-2 text-center">
+                <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-bold text-white">Generate PDF Selesai!</h4>
+                  <p className="text-xs text-slate-300">
+                    Berhasil membuat {bulkProgress.successCount} dari {bulkProgress.total} file PDF resmi di Google Drive.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBulkPdfModal(false);
+                    setBulkProgress(prev => ({ ...prev, completed: false }));
+                  }}
+                  className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal: Informasi Sheet Penilaian */}
       {showRubrikModal && (
