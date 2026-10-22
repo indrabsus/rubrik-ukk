@@ -21,6 +21,37 @@ import {
   Info
 } from 'lucide-react';
 
+// Helper kecocokan penguji dengan nama / username akun login
+function isSiswaUjianPenguji(siswaPenguji: string | undefined, user: Guru | null): boolean {
+  if (!user) return true;
+  if (!siswaPenguji || siswaPenguji.trim() === '-' || siswaPenguji.trim() === '') return false;
+
+  const cleanSiswa = siswaPenguji.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanUserName = user.nama.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanUserLogin = user.username.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  if (cleanSiswa === cleanUserLogin || cleanSiswa.includes(cleanUserLogin) || cleanUserLogin.includes(cleanSiswa)) {
+    return true;
+  }
+  if (cleanSiswa.includes(cleanUserName) || cleanUserName.includes(cleanSiswa)) {
+    return true;
+  }
+
+  // Kata kunci nama (minimal 3 huruf, bukan gelar)
+  const userWords = user.nama.toLowerCase()
+    .replace(/[.,]/g, '')
+    .split(/\s+/)
+    .filter(w => !['spd', 'skom', 'st', 'gr', 'nip', 'guru', 'ketua'].includes(w) && w.length >= 3);
+
+  for (const word of userWords) {
+    if (cleanSiswa.includes(word)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -34,7 +65,8 @@ export default function DashboardPage() {
   const [loadingData, setLoadingData] = useState(true);
 
   // Form & Selection States
-  const [selectedKelas, setSelectedKelas] = useState<string>('XII PPLG 1');
+  const [filterMode, setFilterMode] = useState<'hanya_saya' | 'semua'>('hanya_saya');
+  const [selectedKelas, setSelectedKelas] = useState<string>('Semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNis, setSelectedNis] = useState<string>('');
 
@@ -101,9 +133,26 @@ export default function DashboardPage() {
     }
   }, [currentUser]);
 
-  // 3. Filter Daftar Siswa
+  // 3. Filter Daftar Siswa Berdasarkan Penguji Pra UKK
+  const myAssignedSiswa = useMemo(() => {
+    if (!currentUser) return siswaList;
+    return siswaList.filter((s) => isSiswaUjianPenguji(s.penguji, currentUser));
+  }, [siswaList, currentUser]);
+
+  const availableClasses = useMemo(() => {
+    const classes = Array.from(new Set(siswaList.map(s => s.kelas).filter(Boolean)));
+    return ['Semua', ...classes];
+  }, [siswaList]);
+
   const filteredSiswa = useMemo(() => {
-    return siswaList.filter((s) => {
+    let source = siswaList;
+    if (filterMode === 'hanya_saya' && currentUser) {
+      if (myAssignedSiswa.length > 0) {
+        source = myAssignedSiswa;
+      }
+    }
+
+    return source.filter((s) => {
       const matchKelas = selectedKelas === 'Semua' || s.kelas === selectedKelas;
       const matchQuery =
         !searchQuery ||
@@ -111,7 +160,7 @@ export default function DashboardPage() {
         s.nis.toLowerCase().includes(searchQuery.toLowerCase());
       return matchKelas && matchQuery;
     });
-  }, [siswaList, selectedKelas, searchQuery]);
+  }, [siswaList, myAssignedSiswa, filterMode, currentUser, selectedKelas, searchQuery]);
 
   // 4. Siswa Terpilih
   const activeStudent = useMemo(() => {
@@ -465,15 +514,49 @@ export default function DashboardPage() {
                 <span>Pilih Siswa & Kelas</span>
               </h2>
 
+              {/* Tab Mode: Siswa Ujian Saya vs Semua Siswa */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-400">Tampilkan Siswa</label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-800/90 rounded-2xl border border-slate-700/80">
+                  <button
+                    type="button"
+                    onClick={() => { setFilterMode('hanya_saya'); setSelectedKelas('Semua'); }}
+                    className={`py-2 px-2 rounded-xl text-xs font-semibold transition cursor-pointer text-center ${
+                      filterMode === 'hanya_saya'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Ujian Saya ({myAssignedSiswa.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode('semua')}
+                    className={`py-2 px-2 rounded-xl text-xs font-semibold transition cursor-pointer text-center ${
+                      filterMode === 'semua'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Semua ({siswaList.length})
+                  </button>
+                </div>
+                {filterMode === 'hanya_saya' && myAssignedSiswa.length === 0 && !loadingData && (
+                  <p className="text-[11px] text-amber-400/90 italic bg-amber-500/10 border border-amber-500/20 rounded-xl px-2.5 py-1.5 mt-1">
+                    Catatan: Belum ada siswa yang ditandai penguji "{currentUser?.nama}" di sheet Penguji Pra UKK. Menampilkan seluruh siswa.
+                  </p>
+                )}
+              </div>
+
               {/* Filter Kelas */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Pilih Kelas</label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {['XII PPLG 1', 'XII PPLG 2', 'XII PPLG 3', 'XII PPLG 4'].map((kls) => (
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Filter Kelas</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableClasses.map((kls) => (
                     <button
                       key={kls}
                       onClick={() => setSelectedKelas(kls)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
                         selectedKelas === kls
                           ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/30'
                           : 'bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-slate-800'
@@ -493,7 +576,7 @@ export default function DashboardPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Ketik nama atau NIS..."
+                    placeholder="Ketik nama siswa..."
                     className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
@@ -551,13 +634,12 @@ export default function DashboardPage() {
                 <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-800/40 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-indigo-300">SISWA TERPILIH</span>
-                    <span className="text-[11px] font-mono text-slate-400">{activeStudent.nis}</span>
+                    <span className="text-[11px] font-semibold text-indigo-400">{activeStudent.kelas}</span>
                   </div>
                   <div className="text-sm font-bold text-white capitalize">{activeStudent.nama.toLowerCase()}</div>
-                  <div className="text-xs text-slate-300 flex items-center gap-2">
-                    <span>{activeStudent.kelas}</span>
-                    <span>•</span>
-                    <span className="text-indigo-300 font-medium">{projectTitle}</span>
+                  <div className="text-xs text-slate-300 flex items-center justify-between">
+                    <span className="text-indigo-300 font-medium truncate">{projectTitle}</span>
+                    <span className="text-slate-400 text-[11px]">Penguji: <strong className="text-indigo-200">{activeStudent.penguji && activeStudent.penguji !== '-' ? activeStudent.penguji : currentUser?.nama || '-'}</strong></span>
                   </div>
                 </div>
               )}
@@ -794,7 +876,7 @@ export default function DashboardPage() {
         <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-white">Rekapitulasi Nilai {selectedKelas}</h3>
+              <h3 className="text-base font-bold text-white">Rekapitulasi Nilai Siswa {selectedKelas !== "Semua" ? selectedKelas : (filterMode === "hanya_saya" ? "(Siswa Ujian Saya)" : "(Semua Kelas)")}</h3>
               <p className="text-xs text-slate-400">Daftar siswa dan status penilaian aktif</p>
             </div>
             <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-indigo-300 border border-slate-700">
