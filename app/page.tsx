@@ -68,6 +68,12 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNo, setSelectedNo] = useState<number | null>(null);
 
+  // Rekap Nilai Filter States (Khusus Tab Rekap Semua Siswa - Kajur)
+  const [rekapSearchQuery, setRekapSearchQuery] = useState<string>('');
+  const [rekapKelas, setRekapKelas] = useState<string>('Semua');
+  const [rekapPenguji, setRekapPenguji] = useState<string>('Semua');
+  const [rekapStatus, setRekapStatus] = useState<'semua' | 'sudah' | 'belum'>('semua');
+
   const [projectTitle, setProjectTitle] = useState<string>('Peminjaman Alat');
   const [scores, setScores] = useState<Record<number, number>>({});
   const [catatan, setCatatan] = useState<string>('-');
@@ -204,6 +210,34 @@ export default function DashboardPage() {
       return matchKelas && matchQuery;
     });
   }, [siswaList, myAssignedSiswa, filterMode, currentUser, selectedKelas, searchQuery]);
+
+  // Daftar Penguji untuk filter Rekap
+  const availablePenguji = useMemo(() => {
+    const list = Array.from(new Set(siswaList.map(s => s.penguji).filter(Boolean)));
+    return ['Semua', ...list.filter(p => p && p !== '-')];
+  }, [siswaList]);
+
+  // Daftar Siswa Rekapitulasi (Seluruh 131 Siswa untuk Kajur, tidak dibatasi oleh filterMode 'hanya_saya')
+  const rekapSiswaList = useMemo(() => {
+    return siswaList.filter((s) => {
+      const matchKelas = rekapKelas === 'Semua' || s.kelas === rekapKelas;
+      const matchPenguji = rekapPenguji === 'Semua' || s.penguji === rekapPenguji;
+      const matchStatus =
+        rekapStatus === 'semua'
+          ? true
+          : rekapStatus === 'sudah'
+          ? (s.total || 0) > 0
+          : !(s.total && s.total > 0);
+      const matchQuery =
+        !rekapSearchQuery ||
+        s.nama.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
+        String(s.no).includes(rekapSearchQuery) ||
+        (s.nis && s.nis.toLowerCase().includes(rekapSearchQuery.toLowerCase())) ||
+        (s.penguji && s.penguji.toLowerCase().includes(rekapSearchQuery.toLowerCase()));
+
+      return matchKelas && matchPenguji && matchStatus && matchQuery;
+    });
+  }, [siswaList, rekapKelas, rekapPenguji, rekapStatus, rekapSearchQuery]);
 
   // 4. Siswa Terpilih (menggunakan s.no yang unik dan stabil)
   const activeStudent = useMemo(() => {
@@ -993,38 +1027,71 @@ export default function DashboardPage() {
                     <span>Generate PDF Semua Siswa</span>
                   </button>
                 )}
-                <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-950 text-slate-300 border border-slate-800">
-                  {filteredSiswa.length} Siswa Terdaftar
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-950 text-indigo-300 border border-slate-800">
+                  {rekapSiswaList.length} dari {siswaList.length} Siswa
                 </span>
               </div>
             </div>
 
-            {/* Quick Search & Kelas Filter Bar di Tabel */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="w-full sm:w-72 relative">
+            {/* Quick Search & Filter Bar di Tabel Rekap */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+              <div className="w-full lg:w-72 relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari nama atau NIS siswa..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={rekapSearchQuery}
+                  onChange={(e) => setRekapSearchQuery(e.target.value)}
+                  placeholder="Cari nama, nomor, atau penguji..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-xs text-slate-400 font-medium">Filter Kelas:</span>
-                <select
-                  value={selectedKelas}
-                  onChange={(e) => setSelectedKelas(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                >
-                  {availableClasses.map((kls) => (
-                    <option key={kls} value={kls}>
-                      {kls === 'Semua' ? 'Semua Kelas' : kls}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Filter Kelas */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-medium">Kelas:</span>
+                  <select
+                    value={rekapKelas}
+                    onChange={(e) => setRekapKelas(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    {availableClasses.map((kls) => (
+                      <option key={kls} value={kls}>
+                        {kls === 'Semua' ? 'Semua Kelas' : kls}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Penguji */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-medium">Penguji:</span>
+                  <select
+                    value={rekapPenguji}
+                    onChange={(e) => setRekapPenguji(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer max-w-[180px] truncate"
+                  >
+                    {availablePenguji.map((p) => (
+                      <option key={p} value={p}>
+                        {p === 'Semua' ? 'Semua Penguji' : p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Status Nilai */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-medium">Status:</span>
+                  <select
+                    value={rekapStatus}
+                    onChange={(e) => setRekapStatus(e.target.value as any)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="semua">Semua Status</option>
+                    <option value="sudah">Sudah Dinilai ({sudahDinilaiCount})</option>
+                    <option value="belum">Belum Dinilai ({belumDinilaiCount})</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1046,7 +1113,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 bg-slate-900/30">
-                  {filteredSiswa.map((siswa, idx) => {
+                  {rekapSiswaList.map((siswa, idx) => {
                     const hasScore = (siswa.total || 0) > 0;
                     const scoreVal = siswa.total || 0;
                     const calculatedSkala100 = Math.round((scoreVal / maxPossibleScore) * 100);
@@ -1134,6 +1201,8 @@ export default function DashboardPage() {
                             type="button"
                             onClick={() => {
                               setSelectedNo(siswa.no);
+                              setFilterMode('semua');
+                              setSelectedKelas('Semua');
                               setActiveTab('penilaian');
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
