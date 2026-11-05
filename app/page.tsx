@@ -1169,15 +1169,33 @@ export default function DashboardPage() {
                         </td>
                         <td className="py-3 px-3.5 text-center">
                           {siswa.docUrl ? (
-                            <a
-                              href={siswa.docUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-semibold transition"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>PDF</span>
-                            </a>
+                            <div className="inline-flex items-center gap-1.5 justify-center">
+                              <a
+                                href={siswa.docUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-semibold transition"
+                                title="Buka PDF Dokumen Resmi"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>PDF</span>
+                              </a>
+                              {isKajur && (
+                                <button
+                                  type="button"
+                                  disabled={singleGeneratingNo === siswa.no}
+                                  onClick={() => handleGenerateSinglePdf(siswa)}
+                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[11px] transition cursor-pointer disabled:opacity-50"
+                                  title="Buat Ulang (Regenerate) PDF"
+                                >
+                                  {singleGeneratingNo === siswa.no ? (
+                                    <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           ) : isKajur ? (
                             <button
                               type="button"
@@ -1186,7 +1204,7 @@ export default function DashboardPage() {
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50"
                             >
                               {singleGeneratingNo === siswa.no ? (
-                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <div className="w-3 h-3 border-2 border-indigo-600 border-t-indigo-600 rounded-full animate-spin" />
                               ) : (
                                 <FileText className="w-3 h-3" />
                               )}
