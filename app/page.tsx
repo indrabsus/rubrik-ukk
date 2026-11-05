@@ -65,7 +65,7 @@ export default function DashboardPage() {
   const [filterMode, setFilterMode] = useState<'hanya_saya' | 'semua'>('hanya_saya');
   const [selectedKelas, setSelectedKelas] = useState<string>('Semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedNis, setSelectedNis] = useState<string>('');
+  const [selectedNo, setSelectedNo] = useState<number | null>(null);
 
   const [projectTitle, setProjectTitle] = useState<string>('Peminjaman Alat');
   const [scores, setScores] = useState<Record<number, number>>({});
@@ -101,7 +101,7 @@ export default function DashboardPage() {
     successCount: number;
     failCount: number;
   }>({ current: 0, total: 0, activeName: '', completed: false, successCount: 0, failCount: 0 });
-  const [singleGeneratingNis, setSingleGeneratingNis] = useState<string | null>(null);
+  const [singleGeneratingNo, setSingleGeneratingNo] = useState<number | null>(null);
   const abortBulkRef = useRef(false);
 
   // Cek apakah akun aktif adalah Kajur (Indra Batara)
@@ -198,22 +198,23 @@ export default function DashboardPage() {
       const matchQuery =
         !searchQuery ||
         s.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.nis.toLowerCase().includes(searchQuery.toLowerCase());
+        String(s.no).includes(searchQuery) ||
+        (s.nis && s.nis.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchKelas && matchQuery;
     });
   }, [siswaList, myAssignedSiswa, filterMode, currentUser, selectedKelas, searchQuery]);
 
-  // 4. Siswa Terpilih
+  // 4. Siswa Terpilih (menggunakan s.no yang unik dan stabil)
   const activeStudent = useMemo(() => {
-    return siswaList.find((s) => s.nis === selectedNis);
-  }, [siswaList, selectedNis]);
+    return siswaList.find((s) => s.no === selectedNo) || null;
+  }, [siswaList, selectedNo]);
 
-  // Set default student saat list terload
+  // Set default student saat list terload atau saat filter berganti
   useEffect(() => {
-    if (!selectedNis && filteredSiswa.length > 0) {
-      setSelectedNis(filteredSiswa[0].nis);
+    if (filteredSiswa.length > 0 && (!selectedNo || !filteredSiswa.some((s) => s.no === selectedNo))) {
+      setSelectedNo(filteredSiswa[0].no);
     }
-  }, [filteredSiswa, selectedNis]);
+  }, [filteredSiswa, selectedNo]);
 
   // Reset form saat siswa berganti
   useEffect(() => {
@@ -273,6 +274,7 @@ export default function DashboardPage() {
     setStatusMsg(null);
 
     const payload = {
+      rowIdx: activeStudent.no + 1,
       nis: activeStudent.nis,
       nama: activeStudent.nama,
       kelas: activeStudent.kelas,
@@ -307,7 +309,7 @@ export default function DashboardPage() {
         // Update local siswa list
         setSiswaList((prev) =>
           prev.map((s) =>
-            s.nis === activeStudent.nis
+            s.no === activeStudent.no
               ? {
                   ...s,
                   project: projectTitle,
@@ -331,10 +333,11 @@ export default function DashboardPage() {
 
   // 6b. Action: Generate Single PDF untuk Siswa (Kajur Akses)
   const handleGenerateSinglePdf = async (siswa: Siswa) => {
-    setSingleGeneratingNis(siswa.nis);
+    setSingleGeneratingNo(siswa.no);
     setStatusMsg(null);
 
     const payload = {
+      rowIdx: siswa.no + 1,
       nis: siswa.nis,
       nama: siswa.nama,
       kelas: siswa.kelas,
@@ -361,7 +364,7 @@ export default function DashboardPage() {
         });
         setSiswaList((prev) =>
           prev.map((s) =>
-            s.nis === siswa.nis
+            s.no === siswa.no
               ? { ...s, docUrl: data.docUrl }
               : s
           )
@@ -372,7 +375,7 @@ export default function DashboardPage() {
     } catch (err: any) {
       setStatusMsg({ type: 'err', text: 'Error generate PDF: ' + err.message });
     } finally {
-      setSingleGeneratingNis(null);
+      setSingleGeneratingNo(null);
     }
   };
 
@@ -432,7 +435,7 @@ export default function DashboardPage() {
 
         if (data.success && data.docUrl) {
           successCount++;
-          setSiswaList(prev => prev.map(item => item.nis === s.nis ? { ...item, docUrl: data.docUrl } : item));
+          setSiswaList(prev => prev.map(item => item.no === s.no ? { ...item, docUrl: data.docUrl } : item));
         } else {
           failCount++;
         }
@@ -710,12 +713,12 @@ export default function DashboardPage() {
                 <div className="space-y-1">
                   <label className="text-[11px] text-slate-400 font-medium">Daftar Siswa:</label>
                   <select
-                    value={selectedNis}
-                    onChange={(e) => setSelectedNis(e.target.value)}
+                    value={selectedNo ?? ''}
+                    onChange={(e) => setSelectedNo(Number(e.target.value))}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                   >
                     {filteredSiswa.map((s) => (
-                      <option key={s.nis} value={s.nis}>
+                      <option key={s.no} value={s.no}>
                         {s.nama} ({s.kelas}) {s.total ? `• Skor: ${s.total}` : '• Belum Dinilai'}
                       </option>
                     ))}
@@ -1042,7 +1045,7 @@ export default function DashboardPage() {
 
                     return (
                       <tr
-                        key={siswa.nis}
+                        key={siswa.no}
                         className="hover:bg-slate-800/40 transition"
                       >
                         <td className="py-3 px-3.5 font-mono text-slate-400">{idx + 1}</td>
@@ -1071,7 +1074,7 @@ export default function DashboardPage() {
                           {hasScore ? (
                             calculatedSkala100 > 90 ? (
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                Sangkat Kompeten
+                                Sangat Kompeten
                               </span>
                             ) : calculatedSkala100 >= 80 ? (
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
@@ -1103,11 +1106,11 @@ export default function DashboardPage() {
                           ) : isKajur ? (
                             <button
                               type="button"
-                              disabled={singleGeneratingNis === siswa.nis}
+                              disabled={singleGeneratingNo === siswa.no}
                               onClick={() => handleGenerateSinglePdf(siswa)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 border border-slate-700 hover:border-indigo-500/40 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50"
                             >
-                              {singleGeneratingNis === siswa.nis ? (
+                              {singleGeneratingNo === siswa.no ? (
                                 <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               ) : (
                                 <FileText className="w-3 h-3" />
@@ -1122,7 +1125,7 @@ export default function DashboardPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedNis(siswa.nis);
+                              setSelectedNo(siswa.no);
                               setActiveTab('penilaian');
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}

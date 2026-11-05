@@ -74,7 +74,7 @@ export async function getSiswaData(): Promise<Siswa[]> {
           no: Number(item.no || item.rowIdx || 0),
           kelas: String(item.kelas || 'XII RPL').trim(),
           nama: String(item.nama || '').trim(),
-          nis: String(item.nis || '').trim(),
+          nis: String(item.nis || item.no || '').trim(),
           project: String(item.project || '').trim(),
           scores: scores,
           total: (item.total !== '' && item.total !== null && item.total !== undefined) ? Number(item.total) : 0,
