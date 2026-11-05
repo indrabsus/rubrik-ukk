@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Guru, Siswa, KomponenRubrik } from '@/types';
 import {
   School,
@@ -489,8 +490,15 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Logo & School Branding */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
-              <School className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 p-1 flex items-center justify-center shadow-sm">
+              <Image
+                src="/logo.png"
+                alt="Logo SMK Sangkuriang 1 Cimahi"
+                width={36}
+                height={36}
+                className="w-8 h-8 object-contain"
+                priority
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">

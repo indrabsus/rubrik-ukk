@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { DAFTAR_GURU_RPL, DEFAULT_PASSWORD } from '@/lib/auth-data';
 import { Lock, UserCheck, ShieldCheck, ArrowRight, School } from 'lucide-react';
 
@@ -49,8 +50,15 @@ export default function LoginPage() {
         {/* Header Card */}
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl text-white">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center shadow-inner">
-              <School className="w-8 h-8 text-indigo-300" />
+            <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/20 p-2 flex items-center justify-center shadow-lg">
+              <Image
+                src="/logo.png"
+                alt="Logo SMK Sangkuriang 1 Cimahi"
+                width={72}
+                height={72}
+                className="w-16 h-16 object-contain drop-shadow"
+                priority
+              />
             </div>
           </div>
 

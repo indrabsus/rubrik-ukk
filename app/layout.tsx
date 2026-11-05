@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: 'Rubrik Penilaian UKK PPLG / RPL 2026/2027 • SMK Sangkuriang 1 Cimahi',
   description: 'Portal Penilaian Uji Kompetensi Keahlian (UKK) PPLG / RPL SMK Sangkuriang 1 Cimahi terintegrasi Google Spreadsheet dan Mail Merge Google Docs.',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/logo.png',
+    apple: '/logo.png',
   },
 };
 
