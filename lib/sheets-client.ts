@@ -24,7 +24,7 @@ export async function getRubrikData(): Promise<KomponenRubrik[]> {
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    if (json && Array.isArray(json.rubrik) && json.rubrik.length > 0) {
+    if (json && Array.isArray(json.rubrik) && json.rubrik.length >= 11) {
       return json.rubrik.map((item: any, idx: number) => ({
         no: Number(item.no || idx + 1),
         komponen: String(item.komponen || `Komponen ${idx + 1}`),
@@ -32,6 +32,8 @@ export async function getRubrikData(): Promise<KomponenRubrik[]> {
         maksScore: Number(item.maksScore || item.maks || 10),
         bobot: item.bobot ? String(item.bobot) : `${item.maksScore || 10}%`
       }));
+    } else {
+      console.warn('[SheetsClient] Rubrik dari GAS masih format lama (< 11 komponen), menggunakan rubrik standar 11 komponen.');
     }
   } catch (err) {
     console.warn('[SheetsClient] Gagal fetch rubrik dari GAS, menggunakan fallback:', err);
