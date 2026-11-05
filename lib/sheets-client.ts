@@ -61,7 +61,7 @@ export async function getSiswaData(): Promise<Siswa[]> {
     if (json && Array.isArray(json.siswa) && json.siswa.length > 0) {
       return json.siswa.map((item: any) => {
         const scores: Record<number, number> = {};
-        for (let k = 1; k <= 9; k++) {
+        for (let k = 1; k <= 15; k++) {
           if (item.scores && item.scores[k] !== undefined) {
             scores[k] = Number(item.scores[k]) || 0;
           } else if (item['skor' + k] !== undefined && item['skor' + k] !== '') {

@@ -10,8 +10,8 @@
     "no": 2,
     "komponen": "Alur Bisnis (Business Logic)",
     "indikator": "• Alur sistem logis sesuai studi kasus (Contoh: Status barang/kendaraan berubah, perhitungan denda/durasi akurat).",
-    "maksScore": 15,
-    "bobot": "15%"
+    "maksScore": 10,
+    "bobot": "10%"
   },
   {
     "no": 3,
@@ -59,7 +59,21 @@
     "no": 9,
     "komponen": "Kemampuan Analisis & Troubleshooting",
     "indikator": "• Siswa mampu menjawab pertanyaan logika, menjelaskan cara kerja fungsi tertentu, dan memberikan solusi jika ditanya skenario error.",
-    "maksScore": 15,
-    "bobot": "15%"
+    "maksScore": 10,
+    "bobot": "10%"
+  },
+  {
+    "no": 10,
+    "komponen": "Repository GitHub",
+    "indikator": "• Siswa menyertakan link repository GitHub project yang aktif, terstruktur rapi, dan memiliki riwayat commit yang jelas.",
+    "maksScore": 5,
+    "bobot": "5%"
+  },
+  {
+    "no": 11,
+    "komponen": "Web / Aplikasi Online",
+    "indikator": "• Aplikasi telah online/dideploy (Vercel, Netlify, Railway, VPS, dll) dan dapat diakses publik dengan baik melalui tautan web.",
+    "maksScore": 5,
+    "bobot": "5%"
   }
 ]
