@@ -45,33 +45,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header Card */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl text-white">
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-8 shadow-xl text-slate-800">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/20 p-2 flex items-center justify-center shadow-lg">
+            <div className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 p-2 flex items-center justify-center shadow-sm">
               <Image
                 src="/logo.png"
                 alt="Logo SMK Sangkuriang 1 Cimahi"
                 width={72}
                 height={72}
-                className="w-16 h-16 object-contain drop-shadow"
+                className="w-16 h-16 object-contain"
                 priority
               />
             </div>
           </div>
 
           <div className="text-center mb-8">
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-3">
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-3">
               UKK RPL & PPLG 2026/2027
             </span>
-            <h1 className="text-2xl font-bold tracking-tight">Portal Penguji UKK</h1>
-            <p className="text-slate-400 text-sm mt-1">SMK Sangkuriang 1 Cimahi</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Portal Penguji UKK</h1>
+            <p className="text-slate-500 text-sm mt-1">SMK Sangkuriang 1 Cimahi</p>
           </div>
 
           {errorMsg && (
-            <div className="mb-6 p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-sm">
+            <div className="mb-6 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
               {errorMsg}
             </div>
           )}
@@ -79,28 +79,28 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Pilih Akun Guru */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                 Pilih Akun Guru Penguji
               </label>
               <div className="relative">
                 <select
                   value={selectedUsername}
                   onChange={(e) => setSelectedUsername(e.target.value)}
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition appearance-none cursor-pointer text-sm"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition appearance-none cursor-pointer text-sm shadow-2xs"
                 >
                   {DAFTAR_GURU_RPL.map((guru) => (
-                    <option key={guru.id} value={guru.username} className="bg-slate-900 text-white">
+                    <option key={guru.id} value={guru.username} className="bg-white text-slate-900">
                       {guru.nama}
                     </option>
                   ))}
                 </select>
-                <UserCheck className="w-5 h-5 text-indigo-400 absolute right-3 top-3.5 pointer-events-none" />
+                <UserCheck className="w-5 h-5 text-indigo-600 absolute right-3 top-3.5 pointer-events-none" />
               </div>
             </div>
 
             {/* Input Password */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -110,9 +110,9 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
                   required
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm shadow-2xs"
                 />
-                <Lock className="w-5 h-5 text-indigo-400 absolute right-3 top-3.5 pointer-events-none" />
+                <Lock className="w-5 h-5 text-indigo-600 absolute right-3 top-3.5 pointer-events-none" />
               </div>
             </div>
 
@@ -120,7 +120,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-semibold py-3.5 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50 cursor-pointer"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -134,12 +134,12 @@ export default function LoginPage() {
           </form>
 
           {/* Quick Info Box */}
-          <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-            <p className="text-xs text-slate-400">
+          <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+            <p className="text-xs text-slate-500">
               Sistem Sinkronisasi Spreadsheet & Mail Merge Otomatis
             </p>
-            <div className="flex items-center justify-center gap-2 mt-2 text-[11px] text-indigo-300/80">
-              <span>Jurusan PPLG / RPL</span>
+            <div className="flex items-center justify-center gap-2 mt-2 text-[11px] text-slate-600 font-medium">
+              <span>Jurusan Rekayasa Perangkat Lunak (RPL)</span>
               <span>•</span>
               <span>SMK Sangkuriang 1 Cimahi</span>
             </div>
