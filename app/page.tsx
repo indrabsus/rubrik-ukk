@@ -356,6 +356,12 @@ export default function DashboardPage() {
     return { label: 'Belum Kompeten', color: 'text-rose-700 bg-rose-50 border-rose-300' };
   }, [nilaiAkhir, kkm]);
 
+  const topikOptions = ['Peminjaman Alat', 'Parkir', 'Pengaduan Sarana', 'Peminjaman Buku'];
+  const availableTopikOptions = useMemo(() => {
+    const fromSiswa = siswaList.map((s) => s.project).filter(Boolean) as string[];
+    return Array.from(new Set([...topikOptions, ...fromSiswa]));
+  }, [siswaList]);
+
   // Reset sesiPage jika filter siswa berubah
   useEffect(() => {
     setSesiPage(1);
@@ -868,12 +874,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const topikOptions = ['Peminjaman Alat', 'Parkir', 'Pengaduan Sarana', 'Peminjaman Buku'];
-  const availableTopikOptions = useMemo(() => {
-    const fromSiswa = siswaList.map((s) => s.project).filter(Boolean) as string[];
-    return Array.from(new Set([...topikOptions, ...fromSiswa]));
-  }, [siswaList]);
 
   // Stats
   const totalSiswaCount = siswaList.length;
