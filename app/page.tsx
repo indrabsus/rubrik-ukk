@@ -22,8 +22,6 @@ import {
   Filter,
   Check,
   Table,
-  ChevronLeft,
-  ChevronRight,
   Users,
   CheckSquare,
   ArrowRight
@@ -105,9 +103,7 @@ export default function DashboardPage() {
   // View Mode: 'spreadsheet' (Tabel Baris Penilaian Siswa) atau 'single' (Form 1 Siswa)
   const [viewMode, setViewMode] = useState<'spreadsheet' | 'single'>('spreadsheet');
 
-  // Multi-Student Session States (Untuk Ujian 15 Siswa per Sesi)
-  const [sesiPage, setSesiPage] = useState<number>(1);
-  const [sesiPageSize, setSesiPageSize] = useState<number>(15); // default 15 siswa per sesi
+  // Multi-Student Session States
   const [sessionBatchProject, setSessionBatchProject] = useState<string>('Peminjaman Alat');
   const [savingBatch, setSavingBatch] = useState<boolean>(false);
   const [batchSaveProgress, setBatchSaveProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
@@ -362,21 +358,7 @@ export default function DashboardPage() {
     return Array.from(new Set([...topikOptions, ...fromSiswa]));
   }, [siswaList]);
 
-  // Reset sesiPage jika filter siswa berubah
-  useEffect(() => {
-    setSesiPage(1);
-  }, [selectedKelas, filterMode, searchQuery]);
-
-  const totalSesiPages = useMemo(() => {
-    if (sesiPageSize === 0) return 1;
-    return Math.max(1, Math.ceil(filteredSiswa.length / sesiPageSize));
-  }, [filteredSiswa.length, sesiPageSize]);
-
-  const currentSessionStudents = useMemo(() => {
-    if (sesiPageSize === 0) return filteredSiswa;
-    const start = (sesiPage - 1) * sesiPageSize;
-    return filteredSiswa.slice(start, start + sesiPageSize);
-  }, [filteredSiswa, sesiPage, sesiPageSize]);
+  const currentSessionStudents = filteredSiswa;
 
   // Sinkronisasi data awal sesi dari siswaList
   useEffect(() => {
@@ -410,7 +392,8 @@ export default function DashboardPage() {
 
   // Handler Nilai Sesi Multi-Siswa
   const handleSessionScoreChange = (siswaNo: number, rubrikNo: number, val: number, maxScore: number) => {
-    const clamped = Math.max(0, Math.min(val, maxScore));
+    const num = Math.floor(Number(val) || 0);
+    const clamped = Math.max(0, Math.min(num, maxScore));
     setSessionData((prev) => {
       const student = prev[siswaNo] || {
         scores: {},
@@ -637,7 +620,8 @@ export default function DashboardPage() {
 
   // Handle Score Change
   const handleScoreChange = (no: number, val: number, max: number) => {
-    const clamped = Math.max(0, Math.min(val, max));
+    const num = Math.floor(Number(val) || 0);
+    const clamped = Math.max(0, Math.min(num, max));
     setScores((prev) => ({
       ...prev,
       [no]: clamped
@@ -1131,7 +1115,7 @@ export default function DashboardPage() {
                       ) : (
                         <>
                           <Save className="w-3.5 h-3.5" />
-                          <span>Simpan Semua Nilai Sesi Ini ({currentSessionStudents.length} Siswa)</span>
+                          <span>Simpan Semua Nilai ({currentSessionStudents.length} Siswa)</span>
                         </>
                       )}
                     </button>
@@ -1139,53 +1123,10 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Baris 2: Filter Kelas, Sesi Paginator & Set Soal Serentak (khusus viewMode matrix & spreadsheet) */}
+              {/* Baris 2: Filter Penguji, Filter Kelas & Set Soal Serentak */}
               {viewMode !== 'single' && (
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
-                  {/* Sesi Navigator */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <button
-                        type="button"
-                        disabled={sesiPage <= 1}
-                        onClick={() => setSesiPage((p) => Math.max(1, p - 1))}
-                        className="p-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-700 disabled:opacity-40 transition cursor-pointer"
-                        title="Sesi Sebelumnya"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <span className="px-2 text-xs font-bold text-slate-800">
-                        Sesi {sesiPage} dari {totalSesiPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={sesiPage >= totalSesiPages}
-                        onClick={() => setSesiPage((p) => Math.min(totalSesiPages, p + 1))}
-                        className="p-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-700 disabled:opacity-40 transition cursor-pointer"
-                        title="Sesi Selanjutnya"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Jumlah per Sesi */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-400 font-medium">Kapasitas:</span>
-                      <select
-                        value={sesiPageSize}
-                        onChange={(e) => {
-                          setSesiPageSize(Number(e.target.value));
-                          setSesiPage(1);
-                        }}
-                        className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                      >
-                        <option value={10}>10 Siswa</option>
-                        <option value={15}>15 Siswa (Standar Sesi)</option>
-                        <option value={20}>20 Siswa</option>
-                        <option value={0}>Semua Siswa</option>
-                      </select>
-                    </div>
-
                     {/* Filter Penguji */}
                     <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                       <button
@@ -1224,7 +1165,7 @@ export default function DashboardPage() {
 
                   {/* Set Judul Soal Serentak */}
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-medium whitespace-nowrap">Soal Sesi Ini:</span>
+                    <span className="text-slate-400 font-medium whitespace-nowrap">Terapkan Judul Soal:</span>
                     <select
                       value={sessionBatchProject}
                       onChange={(e) => setSessionBatchProject(e.target.value)}
@@ -1240,16 +1181,16 @@ export default function DashboardPage() {
                       type="button"
                       onClick={handleApplyBatchProject}
                       className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl border border-slate-300 transition cursor-pointer whitespace-nowrap"
-                      title="Terapkan judul soal ini ke seluruh siswa pada sesi aktif"
+                      title="Terapkan judul soal ini ke seluruh siswa yang tampil"
                     >
-                      Terapkan
+                      Terapkan ke Semua
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* TAMPILAN 2: SPREADSHEET (15 SISWA PER BARIS) */}
+            {/* TAMPILAN 2: SPREADSHEET (TABEL BARIS PENILAIAN SISWA) */}
             {viewMode === 'spreadsheet' && (
               <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -1264,7 +1205,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                      Sesi {sesiPage}: {currentSessionStudents.length} Siswa
+                      {currentSessionStudents.length} Siswa
                     </span>
                   </div>
                 </div>
@@ -1323,11 +1264,23 @@ export default function DashboardPage() {
                               return (
                                 <td key={r.no} className="py-2 px-1 text-center border-r border-slate-200">
                                   <input
-                                    type="number"
-                                    min="0"
-                                    max={r.maksScore}
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={score}
-                                    onChange={(e) => handleSessionScoreChange(siswa.no, r.no, parseInt(e.target.value) || 0, r.maksScore)}
+                                    onFocus={(e) => e.target.select()}
+                                    onKeyDown={(e) => {
+                                      if (['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) return;
+                                      if (!/^\d$/.test(e.key)) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    onChange={(e) => {
+                                      const digits = e.target.value.replace(/\D/g, '');
+                                      const parsed = digits === '' ? 0 : parseInt(digits, 10);
+                                      const clamped = Math.min(parsed, r.maksScore);
+                                      handleSessionScoreChange(siswa.no, r.no, clamped, r.maksScore);
+                                    }}
                                     className={`w-12 py-1 text-center font-bold text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
                                       score === r.maksScore
                                         ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
@@ -1592,13 +1545,23 @@ export default function DashboardPage() {
                           {/* Score Input */}
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <input
-                              type="number"
-                              min="0"
-                              max={item.maksScore}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={currentScore}
-                              onChange={(e) =>
-                                handleScoreChange(item.no, Number(e.target.value) || 0, item.maksScore)
-                              }
+                              onFocus={(e) => e.target.select()}
+                              onKeyDown={(e) => {
+                                if (['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) return;
+                                if (!/^\d$/.test(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '');
+                                const parsed = digits === '' ? 0 : parseInt(digits, 10);
+                                const clamped = Math.min(parsed, item.maksScore);
+                                handleScoreChange(item.no, clamped, item.maksScore);
+                              }}
                               className="w-14 sm:w-16 bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-center text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 shadow-2xs"
                             />
                             <span className="text-xs font-semibold text-slate-500">/ {item.maksScore}</span>
@@ -1805,7 +1768,6 @@ export default function DashboardPage() {
                     <th className="py-3 px-3.5">Kelas</th>
                     <th className="py-3 px-3.5">Soal UKK (Cell R)</th>
                     <th className="py-3 px-3.5 text-center">Skor</th>
-                    <th className="py-3 px-3.5 text-center">Skala 100</th>
                     <th className="py-3 px-3.5 text-center">Predikat</th>
                     <th className="py-3 px-3.5">Penguji</th>
                     <th className="py-3 px-3.5 text-center">Dokumen PDF</th>
@@ -1834,13 +1796,6 @@ export default function DashboardPage() {
                         <td className="py-3 px-3.5 text-center">
                           {hasScore ? (
                             <span className="font-bold text-slate-900">{scoreVal}</span>
-                          ) : (
-                            <span className="text-slate-500">-</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3.5 text-center">
-                          {hasScore ? (
-                            <span className="font-bold text-emerald-700">{calculatedSkala100}</span>
                           ) : (
                             <span className="text-slate-500">-</span>
                           )}
