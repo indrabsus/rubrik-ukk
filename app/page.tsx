@@ -21,7 +21,6 @@ import {
   Info,
   Filter,
   Check,
-  Columns,
   Table,
   ChevronLeft,
   ChevronRight,
@@ -103,8 +102,8 @@ export default function DashboardPage() {
     penguji: string;
   } | null>(null);
 
-  // View Mode: 'matrix' (15 Siswa Memanjang ke Samping), 'spreadsheet' (Baris Siswa, Rubrik Samping), 'single' (Form 1 Siswa)
-  const [viewMode, setViewMode] = useState<'matrix' | 'spreadsheet' | 'single'>('matrix');
+  // View Mode: 'spreadsheet' (Tabel Baris Penilaian Siswa) atau 'single' (Form 1 Siswa)
+  const [viewMode, setViewMode] = useState<'spreadsheet' | 'single'>('spreadsheet');
 
   // Multi-Student Session States (Untuk Ujian 15 Siswa per Sesi)
   const [sesiPage, setSesiPage] = useState<number>(1);
@@ -871,6 +870,10 @@ export default function DashboardPage() {
   }
 
   const topikOptions = ['Peminjaman Alat', 'Parkir', 'Pengaduan Sarana', 'Peminjaman Buku'];
+  const availableTopikOptions = useMemo(() => {
+    const fromSiswa = siswaList.map((s) => s.project).filter(Boolean) as string[];
+    return Array.from(new Set([...topikOptions, ...fromSiswa]));
+  }, [siswaList]);
 
   // Stats
   const totalSiswaCount = siswaList.length;
@@ -1084,27 +1087,13 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 p-1 bg-slate-100 border border-slate-200 rounded-2xl self-start flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setViewMode('matrix')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      viewMode === 'matrix'
-                        ? 'bg-white text-indigo-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 font-medium'
-                    }`}
-                    title="Tabel Sesi: 15 Siswa Memanjang ke Samping"
-                  >
-                    <Columns className="w-3.5 h-3.5" />
-                    <span>Tabel Sesi (15 Siswa ke Samping)</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setViewMode('spreadsheet')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                       viewMode === 'spreadsheet'
                         ? 'bg-white text-indigo-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900 font-medium'
                     }`}
-                    title="Tabel Baris: 15 Siswa per Baris, Rubrik ke Samping"
+                    title="Tabel Penilaian Siswa (Spreadsheet)"
                   >
                     <Table className="w-3.5 h-3.5" />
                     <span>Tabel Baris (Spreadsheet)</span>
@@ -1113,7 +1102,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setViewMode('single')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                       viewMode === 'single'
                         ? 'bg-white text-indigo-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900 font-medium'
@@ -1236,13 +1225,17 @@ export default function DashboardPage() {
                   {/* Set Judul Soal Serentak */}
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400 font-medium whitespace-nowrap">Soal Sesi Ini:</span>
-                    <input
-                      type="text"
+                    <select
                       value={sessionBatchProject}
                       onChange={(e) => setSessionBatchProject(e.target.value)}
-                      placeholder="Judul Soal UKK"
-                      className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 w-40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
+                      className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs"
+                    >
+                      {availableTopikOptions.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={handleApplyBatchProject}
@@ -1256,260 +1249,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* TAMPILAN 1: MATRIX (15 SISWA MEMANJANG KE SAMPING) */}
-            {viewMode === 'matrix' && (
-              <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                  <div>
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                      <Columns className="w-4 h-4 text-indigo-600" />
-                      <span>Matriks Penilaian Sesi (15 Siswa Memanjang ke Samping)</span>
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Geser tabel ke kanan untuk melihat seluruh siswa di sesi ini. Ubah skor langsung di tabel, nilai akhir dan predikat terhitung otomatis.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                      Sesi {sesiPage}: {currentSessionStudents.length} Siswa
-                    </span>
-                  </div>
-                </div>
-
-                {/* Table Container dengan Horizontal Scroll */}
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-2xs max-w-full">
-                  <table className="w-full text-left border-collapse min-w-max">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        {/* Sticky Header Rubrik (Kiri) */}
-                        <th className="sticky left-0 z-20 bg-slate-100/95 backdrop-blur-xs py-3.5 px-4 text-xs font-bold text-slate-800 uppercase tracking-wider min-w-[260px] max-w-[280px] border-r border-slate-200 shadow-xs">
-                          Komponen Penilaian UKK
-                        </th>
-                        {/* Kolom 1 s/d 15: Siswa Memanjang ke Pinggir */}
-                        {currentSessionStudents.map((siswa) => {
-                          const sData = sessionData[siswa.no];
-                          const total = getStudentTotal(siswa.no);
-                          const isModified = sData?.isModified;
-                          return (
-                            <th key={siswa.no} className="py-3 px-3 min-w-[200px] max-w-[220px] border-r border-slate-200 text-center align-top bg-slate-50">
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md">
-                                    No. {siswa.no}
-                                  </span>
-                                  {isModified ? (
-                                    <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded-full font-bold">
-                                      Belum Simpan
-                                    </span>
-                                  ) : total > 0 ? (
-                                    <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded-full font-bold">
-                                      Tersimpan ({total})
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded-full">
-                                      Kosong
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="font-bold text-xs text-slate-900 truncate" title={siswa.nama}>
-                                  {siswa.nama}
-                                </div>
-                                <div className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
-                                  <span>{siswa.kelas}</span>
-                                  {siswa.nis && <span>• {siswa.nis}</span>}
-                                </div>
-                                {/* Input Judul Soal / Project per Siswa */}
-                                <input
-                                  type="text"
-                                  value={sData?.project || 'Peminjaman Alat'}
-                                  onChange={(e) => handleSessionProjectChange(siswa.no, e.target.value)}
-                                  placeholder="Judul Soal UKK"
-                                  className="w-full text-[11px] px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-indigo-500 text-center"
-                                />
-                              </div>
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {/* 11 Baris Komponen Rubrik */}
-                      {rubrik.map((r) => (
-                        <tr key={r.no} className="hover:bg-slate-50/70 transition-colors">
-                          {/* Sticky Rubrik Header di Kiri */}
-                          <td className="sticky left-0 z-10 bg-white border-r border-slate-200 py-2.5 px-4 shadow-xs">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <span className="text-xs font-bold text-slate-900">
-                                  {r.no}. {r.komponen}
-                                </span>
-                                <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5" title={r.indikator}>
-                                  {r.indikator.split('\n')[0].replace('• ', '')}
-                                </p>
-                              </div>
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 flex-shrink-0">
-                                Maks {r.maksScore}
-                              </span>
-                            </div>
-                          </td>
-                          {/* Kolom Input Nilai untuk Siswa 1 s/d 15 */}
-                          {currentSessionStudents.map((siswa) => {
-                            const currentScore = sessionData[siswa.no]?.scores?.[r.no] ?? 0;
-                            return (
-                              <td key={siswa.no} className="py-2.5 px-2.5 border-r border-slate-100 text-center align-middle">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSessionScoreChange(siswa.no, r.no, currentScore - 1, r.maksScore)}
-                                    className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center transition cursor-pointer"
-                                  >
-                                    -
-                                  </button>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max={r.maksScore}
-                                    value={currentScore}
-                                    onChange={(e) => handleSessionScoreChange(siswa.no, r.no, parseInt(e.target.value) || 0, r.maksScore)}
-                                    className={`w-12 py-1 text-center font-bold text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                      currentScore === r.maksScore
-                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                        : currentScore > 0
-                                        ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                                        : 'bg-white text-slate-400 border-slate-200'
-                                    }`}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSessionScoreChange(siswa.no, r.no, currentScore + 1, r.maksScore)}
-                                    className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center transition cursor-pointer"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                                {/* Tombol Cepat Skor */}
-                                <div className="flex items-center justify-center gap-1 mt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSessionScoreChange(siswa.no, r.no, r.maksScore, r.maksScore)}
-                                    className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold cursor-pointer"
-                                    title={`Skor Penuh (${r.maksScore})`}
-                                  >
-                                    {r.maksScore}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSessionScoreChange(siswa.no, r.no, Math.round(r.maksScore * 0.8), r.maksScore)}
-                                    className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-semibold cursor-pointer"
-                                    title="80%"
-                                  >
-                                    {Math.round(r.maksScore * 0.8)}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSessionScoreChange(siswa.no, r.no, 0, r.maksScore)}
-                                    className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-500 font-medium cursor-pointer"
-                                  >
-                                    0
-                                  </button>
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-
-                      {/* Baris Total Nilai Akhir */}
-                      <tr className="bg-slate-50 font-bold border-t-2 border-slate-300">
-                        <td className="sticky left-0 z-10 bg-slate-100 border-r border-slate-200 py-3 px-4 shadow-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs uppercase text-slate-900 font-extrabold tracking-wider">Total Skor Akhir</span>
-                            <span className="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold">/ 100</span>
-                          </div>
-                        </td>
-                        {currentSessionStudents.map((siswa) => {
-                          const total = getStudentTotal(siswa.no);
-                          const pred = getStudentPredikat(total);
-                          return (
-                            <td key={siswa.no} className="py-3 px-2.5 border-r border-slate-200 text-center bg-slate-50/80">
-                              <div className="text-base font-extrabold text-slate-900">
-                                {total}
-                              </div>
-                              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1 ${pred.color}`}>
-                                {pred.label}
-                              </span>
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      {/* Baris Catatan Penguji */}
-                      <tr className="bg-white border-t border-slate-200">
-                        <td className="sticky left-0 z-10 bg-white border-r border-slate-200 py-2.5 px-4 shadow-xs">
-                          <span className="text-xs font-semibold text-slate-800">Catatan Penguji</span>
-                        </td>
-                        {currentSessionStudents.map((siswa) => (
-                          <td key={siswa.no} className="py-2.5 px-2.5 border-r border-slate-200">
-                            <textarea
-                              rows={2}
-                              value={sessionData[siswa.no]?.catatan || '-'}
-                              onChange={(e) => handleSessionCatatanChange(siswa.no, e.target.value)}
-                              placeholder="Catatan hasil pengujian..."
-                              className="w-full text-[11px] p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:bg-white focus:border-indigo-500 resize-none"
-                            />
-                          </td>
-                        ))}
-                      </tr>
-
-                      {/* Baris Aksi Simpan */}
-                      <tr className="bg-slate-50 border-t border-slate-200">
-                        <td className="sticky left-0 z-10 bg-slate-100 border-r border-slate-200 py-3 px-4 shadow-xs">
-                          <span className="text-xs font-bold text-slate-800">Aksi Simpan</span>
-                        </td>
-                        {currentSessionStudents.map((siswa) => {
-                          const sData = sessionData[siswa.no];
-                          const isSaving = singleGeneratingNo === siswa.no;
-                          return (
-                            <td key={siswa.no} className="py-3 px-2.5 border-r border-slate-200 text-center">
-                              <div className="flex flex-col gap-1.5 items-center">
-                                <button
-                                  type="button"
-                                  disabled={isSaving}
-                                  onClick={() => handleSaveSessionStudent(siswa)}
-                                  className={`w-full py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
-                                    sData?.isModified
-                                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs animate-pulse'
-                                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
-                                  }`}
-                                >
-                                  {isSaving ? (
-                                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                  ) : (
-                                    <Save className="w-3 h-3" />
-                                  )}
-                                  <span>{sData?.isModified ? 'Simpan' : 'Tersimpan'}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedNo(siswa.no);
-                                    setViewMode('single');
-                                  }}
-                                  className="text-[10px] text-indigo-600 hover:text-indigo-800 underline font-medium cursor-pointer"
-                                >
-                                  Detail Rubrik ↗
-                                </button>
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
             {/* TAMPILAN 2: SPREADSHEET (15 SISWA PER BARIS) */}
             {viewMode === 'spreadsheet' && (
               <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
@@ -1517,10 +1256,10 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
                       <Table className="w-4 h-4 text-indigo-600" />
-                      <span>Tabel Baris Penilaian Sesi (15 Siswa per Baris)</span>
+                      <span>Tabel Penilaian Siswa (Spreadsheet)</span>
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Format spreadsheet: setiap baris adalah siswa, kolom ke kanan adalah 11 komponen rubrik penilaian.
+                      Pilih judul soal UKK dari dropdown untuk setiap siswa, input skor rubrik secara langsung. Nilai akhir dan predikat terhitung otomatis.
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
@@ -1566,13 +1305,18 @@ export default function DashboardPage() {
                               </div>
                               <div className="text-[10px] text-slate-500">{siswa.kelas}</div>
                             </td>
-                            <td className="py-2.5 px-2.5 border-r border-slate-200">
-                              <input
-                                type="text"
+                            <td className="py-2.5 px-2.5 border-r border-slate-200 min-w-[160px]">
+                              <select
                                 value={sData?.project || 'Peminjaman Alat'}
                                 onChange={(e) => handleSessionProjectChange(siswa.no, e.target.value)}
-                                className="w-full text-xs px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500"
-                              />
+                                className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs"
+                              >
+                                {availableTopikOptions.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             {rubrik.map((r) => {
                               const score = sData?.scores?.[r.no] ?? 0;
