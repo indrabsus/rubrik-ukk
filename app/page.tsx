@@ -137,10 +137,48 @@ export default function DashboardPage() {
   const [singleGeneratingNo, setSingleGeneratingNo] = useState<number | null>(null);
   const abortBulkRef = useRef(false);
 
+  // Standar KKM UKK (Default 78, khusus akun Kajur bisa mengatur nilainya)
+  const [kkm, setKkm] = useState<number>(78);
+
   // Cek apakah akun aktif adalah Kajur (Indra Batara)
   const isKajur = useMemo(() => {
     return currentUser?.role === 'kajur' || currentUser?.username?.toLowerCase() === 'indrabatara';
   }, [currentUser]);
+
+  // Load Pengaturan KKM dari server & localStorage
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const savedKkm = localStorage.getItem('ukk_kkm_setting');
+        if (savedKkm && !isNaN(Number(savedKkm))) {
+          setKkm(Number(savedKkm));
+        }
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.kkm) {
+          setKkm(Number(data.kkm));
+          localStorage.setItem('ukk_kkm_setting', String(data.kkm));
+        }
+      } catch (e) {}
+    }
+    loadConfig();
+  }, []);
+
+  const handleKkmChange = async (val: number) => {
+    const cleanVal = Math.max(50, Math.min(val, 100));
+    setKkm(cleanVal);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ukk_kkm_setting', String(cleanVal));
+    }
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kkm: cleanVal })
+      });
+      setStatusMsg({ type: 'ok', text: `Standar KKM berhasil diatur ke ${cleanVal}!` });
+    } catch (e) {}
+  };
 
   // 1. Cek Autentikasi Penguji
   useEffect(() => {
@@ -315,9 +353,9 @@ export default function DashboardPage() {
 
   const predikat = useMemo(() => {
     if (nilaiAkhir > 90) return { label: 'Sangat Kompeten', color: 'text-emerald-700 bg-emerald-50 border-emerald-300' };
-    if (nilaiAkhir >= 80) return { label: 'Kompeten', color: 'text-blue-700 bg-blue-50 border-blue-300' };
+    if (nilaiAkhir >= kkm) return { label: 'Kompeten', color: 'text-blue-700 bg-blue-50 border-blue-300' };
     return { label: 'Belum Kompeten', color: 'text-rose-700 bg-rose-50 border-rose-300' };
-  }, [nilaiAkhir]);
+  }, [nilaiAkhir, kkm]);
 
   // Reset sesiPage jika filter siswa berubah
   useEffect(() => {
@@ -433,7 +471,7 @@ export default function DashboardPage() {
 
   const getStudentPredikat = (total: number) => {
     if (total > 90) return { label: 'Sangat Kompeten', color: 'text-emerald-700 bg-emerald-50 border-emerald-300' };
-    if (total >= 80) return { label: 'Kompeten', color: 'text-blue-700 bg-blue-50 border-blue-300' };
+    if (total >= kkm) return { label: 'Kompeten', color: 'text-blue-700 bg-blue-50 border-blue-300' };
     return { label: 'Belum Kompeten', color: 'text-rose-700 bg-rose-50 border-rose-300' };
   };
 
@@ -454,7 +492,8 @@ export default function DashboardPage() {
       scores: sData.scores,
       total: total,
       catatan: sData.catatan || '-',
-      penguji: sData.penguji || currentUser?.nama || '-'
+      penguji: sData.penguji || currentUser?.nama || '-',
+      kkm: kkm
     };
 
     try {
@@ -528,7 +567,8 @@ export default function DashboardPage() {
         scores: sData?.scores || {},
         total: total,
         catatan: sData?.catatan || '-',
-        penguji: sData?.penguji || currentUser?.nama || '-'
+        penguji: sData?.penguji || currentUser?.nama || '-',
+        kkm: kkm
       };
 
       try {
@@ -636,7 +676,8 @@ export default function DashboardPage() {
       scores: scores,
       total: totalScore,
       catatan: catatan || '-',
-      penguji: pengujiName || currentUser?.nama || '-'
+      penguji: pengujiName || currentUser?.nama || '-',
+      kkm: kkm
     };
 
     try {
@@ -988,7 +1029,7 @@ export default function DashboardPage() {
           )}
 
           {/* Quick Summary Badges */}
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-2xs flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-slate-400" />
               <span>Total: <strong className="text-slate-900">{totalSiswaCount}</strong></span>
@@ -1001,6 +1042,34 @@ export default function DashboardPage() {
               <Clock className="w-3.5 h-3.5 text-amber-400" />
               <span>Belum: <strong className="text-amber-900">{belumDinilaiCount}</strong></span>
             </div>
+
+            {/* Pengaturan KKM UKK (Khusus Akun Kajur bisa ubah, guru biasa view-only) */}
+            {isKajur ? (
+              <div
+                className="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 shadow-2xs flex items-center gap-1.5"
+                title="Kriteria Ketuntasan Minimal (KKM). Khusus akun Kajur dapat mengubah nilai KKM ini."
+              >
+                <Sliders className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                <span className="font-bold text-xs text-indigo-950">KKM:</span>
+                <input
+                  type="number"
+                  min="50"
+                  max="100"
+                  value={kkm}
+                  onChange={(e) => handleKkmChange(Number(e.target.value))}
+                  className="w-12 py-0.5 px-1 bg-white border border-indigo-300 rounded-lg text-center font-black text-xs text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                />
+                <span className="text-[10px] text-indigo-500 font-semibold hidden sm:inline">(Default 78)</span>
+              </div>
+            ) : (
+              <div
+                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 shadow-2xs flex items-center gap-1.5"
+                title={`Kriteria Ketuntasan Minimal (KKM) diatur oleh Kajur: ${kkm}`}
+              >
+                <Sliders className="w-3.5 h-3.5 text-slate-400" />
+                <span>KKM: <strong className="text-indigo-700 font-bold">{kkm}</strong></span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2038,7 +2107,7 @@ export default function DashboardPage() {
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 Sangat Kompeten
                               </span>
-                            ) : calculatedSkala100 >= 80 ? (
+                            ) : calculatedSkala100 >= kkm ? (
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                                 Kompeten
                               </span>

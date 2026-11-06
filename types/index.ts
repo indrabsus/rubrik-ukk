@@ -38,4 +38,5 @@ export interface PenilaianPayload {
   total: number;
   catatan: string;
   penguji: string;
+  kkm?: number;
 }
