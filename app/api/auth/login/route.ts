@@ -1,23 +1,26 @@
 import { NextResponse } from 'next/server';
-import { findGuruByUsername, DEFAULT_PASSWORD } from '@/lib/auth-data';
+import { findGuruByUsername, ACCESS_PIN } from '@/lib/auth-data';
 
 export async function POST(request: Request) {
   try {
-    const { username, password } = await request.json();
+    const { username, pin } = await request.json();
+
+    // Verifikasi PIN Akses (4231)
+    if (!pin) {
+      return NextResponse.json({ success: false, message: 'PIN Akses wajib diisi' }, { status: 400 });
+    }
+
+    if (String(pin).trim() !== ACCESS_PIN) {
+      return NextResponse.json({ success: false, message: 'PIN Akses salah. Masukkan PIN 4231' }, { status: 401 });
+    }
 
     if (!username) {
-      return NextResponse.json({ success: false, message: 'Username wajib diisi' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Silakan pilih nama penguji / admin' }, { status: 400 });
     }
 
     const guru = findGuruByUsername(username);
     if (!guru) {
-      return NextResponse.json({ success: false, message: 'Akun Penguji tidak ditemukan' }, { status: 401 });
-    }
-
-    // Verifikasi password (default rpl2026 atau custom)
-    const validPassword = DEFAULT_PASSWORD;
-    if (password && password !== validPassword) {
-      return NextResponse.json({ success: false, message: 'Password salah' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Akun Penguji / Admin tidak ditemukan' }, { status: 401 });
     }
 
     const res = NextResponse.json({

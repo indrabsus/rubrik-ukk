@@ -141,6 +141,11 @@ export default function DashboardPage() {
     return currentUser?.role === 'kajur' || currentUser?.username?.toLowerCase() === 'indrabatara';
   }, [currentUser]);
 
+  // Cek apakah akun aktif adalah Admin Cetak PDF (Mutiara Zahra)
+  const isAdminPdf = useMemo(() => {
+    return currentUser?.role === 'admin' || currentUser?.username?.toLowerCase() === 'mutiarazahra';
+  }, [currentUser]);
+
   // Load Pengaturan KKM dari server & localStorage
   useEffect(() => {
     async function loadConfig() {
@@ -188,6 +193,14 @@ export default function DashboardPage() {
         }
         setCurrentUser(data.user);
         setPengujiName(data.user.nama || '-');
+
+        // Atur tab & filter default berdasarkan role akun
+        if (data.user.role === 'admin' || data.user.username?.toLowerCase() === 'mutiarazahra') {
+          setActiveTab('semua_nilai');
+        } else if (data.user.role !== 'kajur' && data.user.username?.toLowerCase() !== 'indrabatara') {
+          setActiveTab('penilaian');
+          setFilterMode('hanya_saya');
+        }
       } catch (err) {
         router.push('/login');
       } finally {
@@ -247,6 +260,14 @@ export default function DashboardPage() {
     return siswaList.filter((s) => isSiswaUjianPenguji(s.penguji, currentUser));
   }, [siswaList, currentUser]);
 
+  const myAssignedScoredCount = useMemo(() => {
+    return myAssignedSiswa.filter(s => (s.total || 0) > 0).length;
+  }, [myAssignedSiswa]);
+
+  const myAssignedUnscoredCount = useMemo(() => {
+    return myAssignedSiswa.length - myAssignedScoredCount;
+  }, [myAssignedSiswa, myAssignedScoredCount]);
+
   const availableClasses = useMemo(() => {
     const classes = Array.from(new Set(siswaList.map(s => s.kelas).filter(Boolean)));
     return ['Semua', ...classes];
@@ -254,7 +275,10 @@ export default function DashboardPage() {
 
   const filteredSiswa = useMemo(() => {
     let source = siswaList;
-    if (filterMode === 'hanya_saya' && currentUser) {
+    if (!isKajur && !isAdminPdf) {
+      // Guru penguji biasa HANYA boleh melihat siswa yang diuji olehnya
+      source = myAssignedSiswa;
+    } else if (filterMode === 'hanya_saya' && currentUser) {
       if (myAssignedSiswa.length > 0) {
         source = myAssignedSiswa;
       }
@@ -269,7 +293,7 @@ export default function DashboardPage() {
         (s.nis && s.nis.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchKelas && matchQuery;
     });
-  }, [siswaList, myAssignedSiswa, filterMode, currentUser, selectedKelas, searchQuery]);
+  }, [siswaList, myAssignedSiswa, filterMode, currentUser, selectedKelas, searchQuery, isKajur, isAdminPdf]);
 
   // Daftar Penguji untuk filter Rekap
   const availablePenguji = useMemo(() => {
@@ -994,7 +1018,7 @@ export default function DashboardPage() {
 
         {/* Header Bar untuk Tab Kajur & Stats */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Navigasi Tab - Khusus Akun Kajur (Indra Batara) */}
+          {/* Navigasi Tab - Khusus Akun Kajur / Admin PDF / Guru */}
           {isKajur ? (
             <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 border border-slate-300/80 rounded-2xl self-start">
               <button
@@ -1025,10 +1049,23 @@ export default function DashboardPage() {
                 </span>
               </button>
             </div>
+          ) : isAdminPdf ? (
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-indigo-600" />
+                  <span>Portal Cetak Dokumen PDF UKK</span>
+                </h2>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Admin PDF
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">Generate & unduh kartu kontrol nilai PDF bagi siswa yang telah dinilai oleh guru penguji</p>
+            </div>
           ) : (
             <div>
               <h2 className="text-base font-bold text-slate-900">Form Penilaian Uji Kompetensi Keahlian</h2>
-              <p className="text-xs text-slate-500">Pilih siswa dan berikan penilaian komponen rubrik</p>
+              <p className="text-xs text-slate-500">Penilaian khusus siswa bimbingan/ujian Anda ({myAssignedSiswa.length} Siswa)</p>
             </div>
           )}
 
@@ -1036,15 +1073,15 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 text-xs flex-wrap">
             <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-2xs flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-slate-400" />
-              <span>Total: <strong className="text-slate-900">{totalSiswaCount}</strong></span>
+              <span>Total: <strong className="text-slate-900">{isKajur || isAdminPdf ? totalSiswaCount : myAssignedSiswa.length}</strong></span>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-2xs flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Dinilai: <strong className="text-emerald-900">{sudahDinilaiCount}</strong></span>
+              <span>Dinilai: <strong className="text-emerald-900">{isKajur || isAdminPdf ? sudahDinilaiCount : myAssignedScoredCount}</strong></span>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 shadow-2xs flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Belum: <strong className="text-amber-900">{belumDinilaiCount}</strong></span>
+              <span>Belum: <strong className="text-amber-900">{isKajur || isAdminPdf ? belumDinilaiCount : myAssignedUnscoredCount}</strong></span>
             </div>
 
             {/* Pengaturan KKM UKK (Khusus Akun Kajur bisa ubah, guru biasa view-only) */}
@@ -1078,7 +1115,7 @@ export default function DashboardPage() {
         </div>
 
         {/* TAB 1: FORM PENILAIAN SISWA */}
-        {activeTab === 'penilaian' && (
+        {activeTab === 'penilaian' && !isAdminPdf && (
           <div className="space-y-5">
             {/* Toolbar Mode Tampilan & Kontrol Sesi */}
             <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
@@ -1144,27 +1181,33 @@ export default function DashboardPage() {
               {viewMode !== 'single' && (
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Filter Penguji */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => { setFilterMode('hanya_saya'); setSelectedKelas('Semua'); }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                          filterMode === 'hanya_saya' ? 'bg-white text-indigo-700 font-bold shadow-2xs' : 'text-slate-600'
-                        }`}
-                      >
-                        Ujian Saya ({myAssignedSiswa.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterMode('semua')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                          filterMode === 'semua' ? 'bg-white text-indigo-700 font-bold shadow-2xs' : 'text-slate-600'
-                        }`}
-                      >
-                        Semua ({siswaList.length})
-                      </button>
-                    </div>
+                    {/* Filter Penguji (Kajur bisa toggle Semua, Guru biasa otomatis Ujian Saya) */}
+                    {isKajur ? (
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => { setFilterMode('hanya_saya'); setSelectedKelas('Semua'); }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                            filterMode === 'hanya_saya' ? 'bg-white text-indigo-700 font-bold shadow-2xs' : 'text-slate-600'
+                          }`}
+                        >
+                          Ujian Saya ({myAssignedSiswa.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilterMode('semua')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                            filterMode === 'semua' ? 'bg-white text-indigo-700 font-bold shadow-2xs' : 'text-slate-600'
+                          }`}
+                        >
+                          Semua ({siswaList.length})
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 text-xs">
+                        Siswa Ujian Saya ({myAssignedSiswa.length})
+                      </span>
+                    )}
 
                     {/* Filter Kelas */}
                     <select
@@ -1365,31 +1408,33 @@ export default function DashboardPage() {
                   <span className="text-[11px] text-slate-500">{filteredSiswa.length} ditampilkan</span>
                 </div>
 
-                {/* Filter Mode Ujian Saya vs Semua */}
-                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => { setFilterMode('hanya_saya'); setSelectedKelas('Semua'); }}
-                    className={`py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                      filterMode === 'hanya_saya'
-                        ? 'bg-white text-indigo-700 font-bold shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 font-medium'
-                    }`}
-                  >
-                    Ujian Saya ({myAssignedSiswa.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('semua')}
-                    className={`py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                      filterMode === 'semua'
-                        ? 'bg-white text-indigo-700 font-bold shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 font-medium'
-                    }`}
-                  >
-                    Semua ({siswaList.length})
-                  </button>
-                </div>
+                {/* Filter Mode Ujian Saya vs Semua (Khusus Kajur) */}
+                {isKajur && (
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => { setFilterMode('hanya_saya'); setSelectedKelas('Semua'); }}
+                      className={`py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        filterMode === 'hanya_saya'
+                          ? 'bg-white text-indigo-700 font-bold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 font-medium'
+                      }`}
+                    >
+                      Ujian Saya ({myAssignedSiswa.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterMode('semua')}
+                      className={`py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        filterMode === 'semua'
+                          ? 'bg-white text-indigo-700 font-bold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 font-medium'
+                      }`}
+                    >
+                      Semua ({siswaList.length})
+                    </button>
+                  </div>
+                )}
 
                 {/* Filter Kelas */}
                 <div className="flex items-center gap-2">
@@ -1684,27 +1729,34 @@ export default function DashboardPage() {
       </div>
     )}
 
-        {/* TAB 2: REKAP NILAI SEMUA SISWA (KHUSUS KAJUR INDRA BATARA) */}
-        {(activeTab === 'semua_nilai' || !isKajur) && (
+        {/* TAB 2: REKAP NILAI SEMUA SISWA (KHUSUS KAJUR & ADMIN PDF MUTIARA ZAHRA) */}
+        {(isKajur || isAdminPdf) && activeTab === 'semua_nilai' && (
           <div className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Award className="w-4 h-4 text-indigo-400" />
-                  <span>Rekapitulasi Nilai Seluruh Siswa UKK RPL</span>
+                  <span>{isAdminPdf ? 'Daftar Siswa & Cetak Dokumen PDF UKK' : 'Rekapitulasi Nilai Seluruh Siswa UKK RPL'}</span>
                 </h3>
-                <p className="text-xs text-slate-500">Data nilai dari seluruh guru penguji terintegrasi langsung dengan sheet Penguji Pra UKK</p>
+                <p className="text-xs text-slate-500">
+                  {isAdminPdf
+                    ? 'Generate dokumen PDF bagi siswa yang telah dinilai oleh guru penguji'
+                    : 'Data nilai dari seluruh guru penguji terintegrasi langsung dengan sheet Penguji Pra UKK'}
+                </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {isKajur && (
+                {(isKajur || isAdminPdf) && (
                   <button
                     type="button"
-                    onClick={() => setShowBulkPdfModal(true)}
+                    onClick={() => {
+                      setBulkScope('scored');
+                      setShowBulkPdfModal(true);
+                    }}
                     className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow transition cursor-pointer"
                   >
                     <FileText className="w-4 h-4" />
-                    <span>Generate PDF Semua Siswa</span>
+                    <span>Generate PDF Siswa Dinilai ({sudahDinilaiCount})</span>
                   </button>
                 )}
                 <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-indigo-700 border border-slate-200">
@@ -1852,7 +1904,7 @@ export default function DashboardPage() {
                                 <ExternalLink className="w-3 h-3" />
                                 <span>PDF</span>
                               </a>
-                              {isKajur && (
+                              {(isKajur || isAdminPdf) && (
                                 <button
                                   type="button"
                                   disabled={singleGeneratingNo === siswa.no}
@@ -1868,38 +1920,50 @@ export default function DashboardPage() {
                                 </button>
                               )}
                             </div>
-                          ) : isKajur ? (
-                            <button
-                              type="button"
-                              disabled={singleGeneratingNo === siswa.no}
-                              onClick={() => handleGenerateSinglePdf(siswa)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50"
-                            >
-                              {singleGeneratingNo === siswa.no ? (
-                                <div className="w-3 h-3 border-2 border-indigo-600 border-t-indigo-600 rounded-full animate-spin" />
-                              ) : (
-                                <FileText className="w-3 h-3" />
-                              )}
-                              <span>Buat PDF</span>
-                            </button>
+                          ) : (isKajur || isAdminPdf) ? (
+                            hasScore ? (
+                              <button
+                                type="button"
+                                disabled={singleGeneratingNo === siswa.no}
+                                onClick={() => handleGenerateSinglePdf(siswa)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50"
+                              >
+                                {singleGeneratingNo === siswa.no ? (
+                                  <div className="w-3 h-3 border-2 border-indigo-600 border-t-indigo-600 rounded-full animate-spin" />
+                                ) : (
+                                  <FileText className="w-3 h-3" />
+                                )}
+                                <span>Buat PDF</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-400 text-[10px] italic">Belum Dinilai</span>
+                            )
                           ) : (
                             <span className="text-slate-500 text-[11px]">-</span>
                           )}
                         </td>
                         <td className="py-3 px-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedNo(siswa.no);
-                              setFilterMode('semua');
-                              setSelectedKelas('Semua');
-                              setActiveTab('penilaian');
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-semibold text-[11px] transition cursor-pointer"
-                          >
-                            Beri Nilai
-                          </button>
+                          {isKajur ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedNo(siswa.no);
+                                setFilterMode('semua');
+                                setSelectedKelas('Semua');
+                                setActiveTab('penilaian');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-semibold text-[11px] transition cursor-pointer"
+                            >
+                              Beri Nilai
+                            </button>
+                          ) : (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              hasScore ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'
+                            }`}>
+                              {hasScore ? 'Siap Cetak' : 'Belum Dinilai'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1976,7 +2040,9 @@ export default function DashboardPage() {
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-slate-900">Generate Dokumen PDF (Kajur)</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                    Generate Dokumen PDF UKK {isAdminPdf ? '(Admin PDF)' : '(Kajur)'}
+                  </h3>
                   <p className="text-[11px] text-slate-400">Buat PDF penilaian resmi untuk siswa dari seluruh penguji</p>
                 </div>
               </div>
@@ -1995,37 +2061,46 @@ export default function DashboardPage() {
               <div className="space-y-3.5 text-xs">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-2">Pilih Sasaran Siswa:</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBulkScope('scored')}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition ${
-                        bulkScope === 'scored'
-                          ? 'bg-indigo-50 border-indigo-500 text-indigo-950 font-bold ring-1 ring-indigo-500'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="font-bold text-xs text-indigo-300">Siswa Sudah Dinilai</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
-                        {siswaList.filter(s => (s.total || 0) > 0).length} siswa
+                  {isAdminPdf ? (
+                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900">
+                      <div className="font-bold text-xs text-indigo-700">Sasaran: Siswa yang Sudah Dinilai Penguji</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {siswaList.filter(s => (s.total || 0) > 0).length} siswa siap dicetak PDF
                       </div>
-                    </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBulkScope('scored')}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition ${
+                          bulkScope === 'scored'
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-950 font-bold ring-1 ring-indigo-500'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="font-bold text-xs text-indigo-700">Siswa Sudah Dinilai</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {siswaList.filter(s => (s.total || 0) > 0).length} siswa
+                        </div>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setBulkScope('all')}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition ${
-                        bulkScope === 'all'
-                          ? 'bg-indigo-50 border-indigo-500 text-indigo-950 font-bold ring-1 ring-indigo-500'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="font-bold text-xs text-indigo-300">Semua Siswa</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
-                        {siswaList.length} siswa total
-                      </div>
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => setBulkScope('all')}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition ${
+                          bulkScope === 'all'
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-950 font-bold ring-1 ring-indigo-500'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="font-bold text-xs text-indigo-700">Semua Siswa</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {siswaList.length} siswa total
+                        </div>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1 text-[11px]">

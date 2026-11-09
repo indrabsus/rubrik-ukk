@@ -72,10 +72,19 @@ export const DAFTAR_GURU_RPL: Guru[] = [
     nip: 'NIP. -',
     jabatan: 'Guru Produktif PPLG',
     role: 'guru'
+  },
+  {
+    id: '10',
+    username: 'mutiarazahra',
+    nama: 'Mutiara Zahra',
+    nip: 'NIP. -',
+    jabatan: 'Admin Cetak Dokumen PDF UKK',
+    role: 'admin'
   }
 ];
 
-export const DEFAULT_PASSWORD = process.env.DEFAULT_GURU_PASSWORD || 'rpl2026';
+export const ACCESS_PIN = process.env.ACCESS_PIN || '4231';
+export const DEFAULT_PASSWORD = process.env.DEFAULT_GURU_PASSWORD || '4231';
 
 export function findGuruByUsername(username: string): Guru | undefined {
   const clean = username.trim().toLowerCase().replace(/[^a-z0-9]/g, '');

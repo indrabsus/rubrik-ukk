@@ -4,7 +4,7 @@ export interface Guru {
   nama: string;
   nip: string;
   jabatan: string;
-  role: 'kajur' | 'guru' | 'eksternal';
+  role: 'kajur' | 'guru' | 'eksternal' | 'admin';
 }
 
 export interface Siswa {
