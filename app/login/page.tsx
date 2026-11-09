@@ -21,7 +21,7 @@ export default function LoginPage() {
     setErrorMsg('');
 
     if (!isPinValid) {
-      setErrorMsg('PIN Akses salah. Masukkan PIN 4231 terlebih dahulu.');
+      setErrorMsg('PIN Akses salah. Silakan masukkan PIN yang benar.');
       return;
     }
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* 1. Input PIN Akses (4231) */}
+            {/* 1. Input PIN Akses */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
@@ -104,7 +104,7 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <input
-                  type="text"
+                  type="password"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={4}
@@ -114,14 +114,14 @@ export default function LoginPage() {
                     setPin(val);
                     if (errorMsg) setErrorMsg('');
                   }}
-                  placeholder="Masukkan PIN (4 Digit)"
+                  placeholder="••••"
                   autoFocus
                   required
-                  className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 font-mono text-center text-lg tracking-[0.3em] font-bold placeholder:text-sm placeholder:tracking-normal placeholder:font-sans placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition shadow-2xs ${
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 font-mono text-center text-2xl tracking-[0.4em] font-bold placeholder:text-lg placeholder:tracking-normal placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition shadow-2xs ${
                     isPinValid
-                      ? 'border-emerald-400 focus:ring-emerald-500 bg-emerald-50/30'
+                      ? 'border-emerald-400 focus:ring-emerald-500 bg-emerald-50/30 text-emerald-800'
                       : pin.length === 4
-                      ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30'
+                      ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30 text-rose-800'
                       : 'border-slate-300 focus:ring-indigo-500'
                   }`}
                 />
@@ -131,8 +131,8 @@ export default function LoginPage() {
                 {isPinValid
                   ? 'Akses terbuka. Silakan pilih nama Anda di bawah.'
                   : pin.length === 4
-                  ? 'PIN salah. Masukkan PIN 4231.'
-                  : 'Ketik PIN 4231 untuk membuka pilihan nama penguji.'}
+                  ? 'PIN salah. Silakan coba lagi.'
+                  : 'Masukkan 4 digit PIN penguji untuk membuka akses.'}
               </p>
             </div>
 
@@ -197,7 +197,7 @@ export default function LoginPage() {
             ) : (
               <div className="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center text-xs text-slate-400 flex flex-col items-center gap-1.5">
                 <Lock className="w-5 h-5 text-slate-400" />
-                <span>Ketik PIN <strong>4231</strong> di atas untuk memilih nama penguji</span>
+                <span>Masukkan 4 digit PIN di atas untuk memilih nama penguji</span>
               </div>
             )}
           </form>

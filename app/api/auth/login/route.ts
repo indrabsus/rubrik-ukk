@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     if (String(pin).trim() !== ACCESS_PIN) {
-      return NextResponse.json({ success: false, message: 'PIN Akses salah. Masukkan PIN 4231' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'PIN Akses salah' }, { status: 401 });
     }
 
     if (!username) {
