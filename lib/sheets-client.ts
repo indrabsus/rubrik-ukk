@@ -115,9 +115,12 @@ export async function saveNilaiToSheet(payload: PenilaianPayload): Promise<{ suc
     });
 
     const json = await res.json();
+    const isSuccess = json.success === true;
     return {
-      success: json.success ?? true,
-      message: json.message || 'Nilai berhasil disinkronkan ke Spreadsheet!',
+      success: isSuccess,
+      message: isSuccess
+        ? (json.message || 'Nilai berhasil disinkronkan ke Spreadsheet!')
+        : (json.error || json.message || 'Gagal sinkron ke Spreadsheet'),
       docUrl: json.docUrl
     };
   } catch (err: any) {

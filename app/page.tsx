@@ -614,11 +614,17 @@ export default function DashboardPage() {
                 : s
             )
           );
+        } else {
+          console.warn(`Gagal simpan ${siswa.nama}:`, data.message);
         }
       } catch (e) {
         console.error(e);
       }
       setBatchSaveProgress({ current: i + 1, total: targets.length });
+      // Jeda 200ms antar antrean agar Google Apps Script memproses antrean lock dengan tertib
+      if (i < targets.length - 1) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
     }
 
     setSavingBatch(false);
